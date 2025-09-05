@@ -50,7 +50,7 @@ export default function Home() {
             <div className="text-4xl text-purple-600">➕</div>
             <h3 className="font-semibold">Create Your Own</h3>
             <p className="text-sm text-gray-600">
-              Organizers can post and manage events for free.
+              Organizers can Post and Manage events for free.
             </p>
           </div>
         </div>
