@@ -4,15 +4,16 @@ import Link from "next/link"
 import { Button } from "../ui/button"
 import NavItems from "./NavItems"
 import MobileNav from "./MobileNav"
+
 // import MobileNav from "./MobileNav"
 
 const Header = () => {
   return (
     <header className="w-full border-b bg-purple-500">
-      <div className="wrapper flex items-center justify-between">
+      <div className=" flex items-center justify-between">
         <Link href="/" className="w-36">
           <Image 
-            src="/assets/images/logo.png" width={285} height={52}
+            src="/assets/images/logo.png" width={128} height={38}
             alt="EventHub logo" 
           />
         </Link>
@@ -24,11 +25,11 @@ const Header = () => {
           </nav>
           </SignedIn>
 
-        {/* <SignedIn>
+        <SignedIn>
           
-            <UserButton afterSignOutUrl="/" />
+             <UserButton afterSignOutUrl="/" />
           
-        </SignedIn> */}
+        </SignedIn>
 
         <div className="flex w-32 justify-end gap-3">
           <SignedIn> {/* Option 1: keep Clerk’s dropdown menu */}
