@@ -119,6 +119,22 @@
   padding: 1rem;
 }
 
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.p-medium-16 {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.p-regular-16 {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
 .h3-bold {
   font-size: 1.5rem; /* text-2xl equivalent */
   font-weight: 700;  /* font-bold equivalent */
