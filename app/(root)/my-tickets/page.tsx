@@ -4,8 +4,12 @@ import { getOrdersByUser } from "@/lib/actions/order.actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+// Update the import path below to the correct location of your order.model file.
+// For example, if the file is in 'lib/models/order.model.ts', use the following:
+// import { IOrder } from "@/database/models/order.model.ts";
 import { Calendar, MapPin, DollarSign, Download, QrCode } from "lucide-react";
 import Link from "next/link";
+import { IOrder } from "@/lib/database/models/order.model";
 
 const MyTicketsPage = async () => {
   const { sessionClaims } = await auth();
@@ -29,7 +33,7 @@ const MyTicketsPage = async () => {
 
         {orders?.data && orders.data.length > 0 ? (
           <div className="space-y-6">
-            {orders.data.map((order) => (
+            {orders.data.map((order: IOrder) => (
               <Card key={order._id} className="overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
                   <div className="flex items-center justify-between">
