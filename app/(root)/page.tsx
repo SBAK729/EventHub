@@ -25,6 +25,7 @@ import {
   Twitter,
   Instagram,
   Github,
+  Quote
 } from "lucide-react"
 export default function Home() {
   return (
@@ -249,7 +250,7 @@ export default function Home() {
 
           <Card className="max-w-2xl mx-auto">
             <CardContent className="p-8">
-              <div className="text-4xl text-purple-600 mb-4">"</div>
+              <Quote className="mx-auto h-12 w-12 text-black mb-4" fill="currentColor" />
               <p className="text-lg mb-6 text-pretty">
                 Posting my events on EventHub has doubled my attendance, it's the easiest way to reach the right
                 audience.
@@ -271,9 +272,10 @@ export default function Home() {
             EventHub is the easiest way to reach an engaged local audience. Post your event in minutes and watch your
             community grow.
           </p>
-          <Button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 text-lg">
-            Create an Event for Free
-          </Button>
+          <Button className="bg-[#4E3C7B] hover:bg-[#3F3063] text-white px-8 py-3 text-lg">
+    Create an Event for Free
+</Button>
+
         </div>
       </section>
 
