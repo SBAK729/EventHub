@@ -271,9 +271,9 @@ export default function Home() {
             EventHub is the easiest way to reach an engaged local audience. Post your event in minutes and watch your
             community grow.
           </p>
-          <Button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 text-lg">
-            Create an Event for Free
-          </Button>
+          <Button className="bg-[#4E3C7B] hover:bg-[#3F3063] text-white px-8 py-3 text-lg">
+    Create an Event for Free
+</Button>
         </div>
       </section>
 
