@@ -1,5 +1,5 @@
 // /app/page.tsx
-
+import Image from "next/image"; 
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Card, CardContent } from "@/components/ui/card"
@@ -25,6 +25,7 @@ import {
   Twitter,
   Instagram,
   Github,
+  Quote
 } from "lucide-react"
 export default function Home() {
   return (
@@ -39,16 +40,28 @@ export default function Home() {
           neighbors and make a difference.
         </p>
         <div className="flex justify-center">
-          <input
-            type="text"
-            placeholder="Search for yoga, workshops, art..."
-            className="px-4 py-2 rounded-l-md w-96 text-black"
-          />
-         <Button size="lg" asChild className="bg-purple-600 px-6 py-2 rounded-r-md text-white">
-              <Link href="#events">
-                Search
-              </Link>
-            </Button>
+          <div className="flex h-14 w-full max-w-xl items-center rounded-lg border bg-white p-2 shadow-sm">
+  {/* 1. Icon */}
+  <Search className="mx-2 h-5 w-5 text-gray-500" />
+
+  {/* 2. Input Field */}
+  <input
+    type="text"
+    placeholder="Search for yoga, workshops, art..."
+    className="h-full flex-1 bg-transparent text-lg text-black placeholder-gray-500 outline-none ring-0 focus:ring-0 border-none"
+  />
+
+  {/* 3. Search Button */}
+  <Button
+    size="lg"
+    asChild
+    className="rounded-md bg-[#564287] px-6 text-base text-white hover:bg-[#4a094a]"
+  >
+    <Link href="#events">
+      Search
+    </Link>
+  </Button>
+</div>
         </div>
       </div>
     </section>
@@ -80,72 +93,71 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-purple-700 py-12 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-white text-balance">Recommended For You</h2>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <EventCard
-              image="assets\images\urban-concert-stage-with-purple-lighting.png"
-              category="Music"
-              title="Urban Beats Concert"
-              date="Fri, Sept 12 • 7:00 PM"
-              location="Kasarani Stadium"
-              attendees="554 attending"
-              price="500"
-              organizer="David K."
-            />
-
-            <EventCard
-              image="assets\images\volunteers-cleaning-park-environment.png"
-              category="Volunteer"
-              title="Green Future Cleanup Drive"
-              date="Sun, Sept 15 • 9:00 AM"
-              location="Uhuru Park, Nairobi"
-              attendees="204 attending"
-              price="Free"
-            />
-
-            <EventCard
-              image="assets/images/tech-hackathon-coding-workspace.png"
-              category="Tech"
-              title="Tech for Tomorrow Hackathon"
-              date="Sept 14-15 • 8:00 AM"
-              location="Strathmore University, Nairobi"
-              attendees="500 attending"
-              price="Free"
-            />
-
-            <EventCard
-              image="assets/images/jazz-festival-concert-crowd-blue-lights.png"
-              category="Music"
-              title="Summer Jazz Festival"
-              date="7/15/2025 at 7:00PM"
-              location="Central Park"
-              attendees="254 attending"
-              price="36"
-            />
-          </div>
+<section className="bg-gradient-to-r from-[#281E3E] to-[#6950A4] py-12 md:py-16">
+    <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-white text-balance">Recommended For You</h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
-      </section>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <EventCard
+          image="assets\images\urban-concert-stage-with-purple-lighting.png"
+          category="Music"
+          title="Urban Beats Concert"
+          date="Fri, Sept 12 • 7:00 PM"
+          location="Kasarani Stadium"
+          attendees="554 attending"
+          price="500"
+        />
+
+        <EventCard
+          image="assets\images\volunteers-cleaning-park-environment.png"
+          category="Volunteer"
+          title="Green Future Cleanup Drive"
+          date="Sun, Sept 15 • 9:00 AM"
+          location="Uhuru Park, Nairobi"
+          attendees="204 attending"
+          price="Free"
+        />
+
+        <EventCard
+          image="assets/images/tech-hackathon-coding-workspace.png"
+          category="Tech"
+          title="Tech for Tomorrow Hackathon"
+          date="Sept 14-15 • 8:00 AM"
+          location="Strathmore University, Nairobi"
+          attendees="500 attending"
+          price="Free"
+        />
+
+        <EventCard
+          image="assets/images/jazz-festival-concert-crowd-blue-lights.png"
+          category="Music"
+          title="Summer Jazz Festival"
+          date="7/15/2025 at 7:00PM"
+          location="Central Park"
+          attendees="254 attending"
+          price="36"
+        />
+      </div>
+    </div>
+</section>
 
       {/* Trending in Nairobi */}
       <section className="bg-white py-12 md:py-16">
@@ -249,7 +261,7 @@ export default function Home() {
 
           <Card className="max-w-2xl mx-auto">
             <CardContent className="p-8">
-              <div className="text-4xl text-purple-600 mb-4">"</div>
+              <Quote className="mx-auto h-12 w-12 text-black mb-4" fill="currentColor" />
               <p className="text-lg mb-6 text-pretty">
                 Posting my events on EventHub has doubled my attendance, it's the easiest way to reach the right
                 audience.
@@ -271,88 +283,96 @@ export default function Home() {
             EventHub is the easiest way to reach an engaged local audience. Post your event in minutes and watch your
             community grow.
           </p>
-          <Button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 text-lg">
-            Create an Event for Free
-          </Button>
+          <Button className="bg-[#4E3C7B] hover:bg-[#3F3063] text-white px-8 py-3 text-lg">
+    Create an Event for Free
+</Button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-purple-700 text-white py-12">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <span className="text-purple-600 font-bold text-sm">E</span>
-                </div>
-                <span className="font-semibold text-lg">EventHub</span>
-              </div>
-              <p className="text-white/80 text-sm text-pretty">
-                Connecting communities through meaningful events. Discover, create, and participate in local experiences
-                that bring people together.
-              </p>
-            </div>
+    <footer className="bg-gradient-to-r from-[#4E3C7B] to-[#6950A4] text-white py-12">
+      <div className="max-w-6xl mx-auto px-4 md:px-6">
+        {/* 2. Responsiveness is maintained with this grid structure */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          
+          {/* First Column with updated Logo */}
+          <div>
+            <Image
+              src="/assets/images/logo.png"
+              width={128}
+              height={38}
+              alt="EventHub logo"
+              className="mb-4" // Added margin-bottom for spacing
+            />
+            <p className="text-white/80 text-sm text-pretty">
+              Connecting communities through meaningful events. Discover, create, and participate in local experiences
+              that bring people together.
+            </p>
+          </div>
 
-            <div>
-              <h3 className="font-semibold mb-4">Platform</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    Discover Events
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    For Organizers
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    About Us
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    Help Center
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Legal</h3>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    Privacy Policy
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    Terms of Service
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    Community Guidelines
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-4">Follow Us</h3>
-              <div className="flex gap-4">
-                <Facebook className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
-                <Twitter className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
-                <Instagram className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
-                <Github className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
-              </div>
+          {/* Platform Links */}
+          <div>
+            <h3 className="font-semibold mb-4">Platform</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a href="#" className="text-white/80 hover:text-white">
+                  Home
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-white/80 hover:text-white">
+                  My Events
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-white/80 hover:text-white">
+                  Create Event
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-white/80 hover:text-white">
+                  Search Event
+                </a>
+              </li>
+            </ul>
+          </div>
+          
+          {/* Legal Links */}
+          <div>
+            <h3 className="font-semibold mb-4">Legal</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a href="#" className="text-white/80 hover:text-white">
+                  Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-white/80 hover:text-white">
+                  Terms of Service
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-white/80 hover:text-white">
+                  Community Guidelines
+                </a>
+              </li>
+            </ul>
+          </div>
+          
+          {/* Social Links */}
+          <div>
+            <h3 className="font-semibold mb-4">Follow Us</h3>
+            <div className="flex gap-4">
+              <Facebook className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
+              <Twitter className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
+              <Instagram className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
+              <Github className="w-5 h-5 text-white/80 hover:text-white cursor-pointer" />
             </div>
           </div>
+
         </div>
-      </footer>
+      </div>
+    </footer>
     </>
   )
 }
@@ -441,9 +461,9 @@ interface InterestCardProps {
 function InterestCard({ icon: Icon, title }: InterestCardProps) {
   return (
     <Card className="p-6 text-center hover:shadow-md transition-shadow cursor-pointer">
-      <Icon className="w-8 h-8 mx-auto mb-3 text-purple-600" />
-      <h3 className="font-medium text-sm">{title}</h3>
-    </Card>
+  <Icon className="w-8 h-8 mx-auto mb-3 text-black" />
+  <h3 className="font-medium text-sm">{title}</h3>
+</Card>
   )
 }
 
