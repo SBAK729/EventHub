@@ -61,18 +61,35 @@ export async function getUserById(userId: string) {
   }
 }
 
-export const getAllUsers = async () => {
+export const getAllUsers = async ({
+  query,
+  page,
+  limit,
+}: {
+  query: string;
+  page: number;
+  limit: number;
+}) => {
   try {
     await connectToDatabase();
 
-    // fetch all users stored in your DB with clerkId
-    const users = await User.find({}, { password: 0 }); // exclude password if exists
+    const skip = (page - 1) * limit;
+
+    const users = await User.find(
+      query
+        ? { firstName: { $regex: query, $options: "i" } } // example: search by firstName
+        : {},
+      { password: 0 }
+    )
+      .skip(skip)
+      .limit(limit);
 
     return JSON.parse(JSON.stringify(users));
   } catch (error) {
     handleError(error);
   }
 };
+
 
 export async function updateUser(clerkId: string, user: UpdateUserParams) {
   try {
