@@ -1,13 +1,18 @@
 "use client"
+import { useAuth } from "@clerk/nextjs"
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { auth } from "@clerk/nextjs"
 import { updateUser, getUserById } from "@/lib/actions/user.actions"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
+// const { userId, sessionId, getToken } = useAuth()
+
+
 export default function UpdateProfilePage() {
+  const { userId, getToken } = useAuth()
+
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [form, setForm] = useState({ firstName: "", lastName: "", username: "", photo: "" })
