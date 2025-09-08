@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { auth } from '@clerk/nextjs/server'
 
 import { connectToDatabase } from '@/lib/database'
 import User from '@/lib/database/models/user.model'
@@ -25,14 +26,53 @@ export async function getUserById(userId: string) {
   try {
     await connectToDatabase()
 
-    const user = await User.findById(userId)
+    // Try by Mongo _id first; if it fails, fall back to Clerk ID
+    let user = null as any
+    try {
+      user = await User.findById(userId)
+    } catch {}
+    if (!user) {
+      user = await User.findOne({ clerkId: userId })
+    }
 
-    if (!user) throw new Error('User not found')
+    // Auto-provision user from Clerk if not found
+    if (!user) {
+      const { sessionClaims } = await auth()
+      const email = (sessionClaims?.email as string) || ''
+      const firstName = (sessionClaims?.firstName as string) || ''
+      const lastName = (sessionClaims?.lastName as string) || ''
+      const username = (sessionClaims?.username as string) || ''
+      const photo = (sessionClaims?.image as string) || ''
+
+      if (!email) throw new Error('User not found')
+
+      user = await User.create({
+        clerkId: userId,
+        email,
+        firstName,
+        lastName,
+        username: username || email.split('@')[0],
+        photo,
+      })
+    }
     return JSON.parse(JSON.stringify(user))
   } catch (error) {
     handleError(error)
   }
 }
+
+export const getAllUsers = async () => {
+  try {
+    await connectToDatabase();
+
+    // fetch all users stored in your DB with clerkId
+    const users = await User.find({}, { password: 0 }); // exclude password if exists
+
+    return JSON.parse(JSON.stringify(users));
+  } catch (error) {
+    handleError(error);
+  }
+};
 
 export async function updateUser(clerkId: string, user: UpdateUserParams) {
   try {

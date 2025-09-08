@@ -7,6 +7,7 @@ import Event from '@/lib/database/models/event.model'
 import User from '@/lib/database/models/user.model'
 import Category from '@/lib/database/models/category.model'
 import { handleError } from '@/lib/utils'
+import { ObjectId } from 'mongodb'
 
 import {
   CreateEventParams,
@@ -32,10 +33,11 @@ export async function createEvent({ userId, event, path }: CreateEventParams) {
   try {
     await connectToDatabase()
 
-    const organizer = await User.findById(userId)
+    // Map Clerk userId to internal User._id
+    const organizer = await User.findOne({ clerkId: userId })
     if (!organizer) throw new Error('Organizer not found')
 
-    const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: userId })
+    const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: organizer._id })
     revalidatePath(path)
 
     return JSON.parse(JSON.stringify(newEvent))
@@ -128,7 +130,9 @@ export async function getEventsByUser({ userId, limit = 6, page }: GetEventsByUs
   try {
     await connectToDatabase()
 
-    const conditions = { organizer: userId }
+    const owner = await User.findOne({ clerkId: userId })
+    if (!owner) throw new Error('User not found')
+    const conditions = { organizer: owner._id }
     const skipAmount = (page - 1) * limit
 
     const eventsQuery = Event.find(conditions)
