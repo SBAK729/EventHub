@@ -54,30 +54,52 @@ export default function Home() {
       </div>
     </section>
 
-      <section className="bg-gray-100 py-16 text-center">
-        <h2 className="text-2xl font-bold mb-8">Connect in Three Easy Steps</h2>
-        <div className="flex justify-center gap-12">
-          <div className="w-60 space-y-3">
-            <div className="text-4xl text-purple-600">🔍</div>
-            <h3 className="font-semibold">Find an Event</h3>
-            <p className="text-sm text-gray-600">
-              Use our smart search to find events that match your interests.
+            <section className="bg-[#F8F7FC] py-20 px-4 text-center">
+        <h2 className="text-3xl font-bold text-gray-900 mb-16">Connect in Three Easy Steps</h2>
+        <div className="flex flex-col md:flex-row justify-center items-center md:items-start gap-16">
+
+          
+          <div className="flex flex-col items-center text-center max-w-xs space-y-4">
+            <div className="flex items-center justify-center w-20 h-20 bg-[#564287] rounded-full">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" className="w-10 h-10 text-white">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 pt-2">Find an Event</h3>
+            <p className="text-base text-gray-600">
+              Use our smart search to find events that match your interests and schedule.
             </p>
           </div>
-          <div className="w-60 space-y-3">
-            <div className="text-4xl text-purple-600">✅</div>
-            <h3 className="font-semibold">RSVP in a Tap</h3>
-            <p className="text-sm text-gray-600">
-              Confirm your spot and add events to your calendar.
+
+          
+          <div className="flex flex-col items-center text-center max-w-xs space-y-4">
+            <div className="flex items-center justify-center w-20 h-20 bg-[#564287] rounded-full">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" className="w-10 h-10 text-white">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 pt-2">RSVP in a Tap</h3>
+            <p className="text-base text-gray-600">
+              Instantly confirm your spot and add events directly to your personal calendar.
             </p>
           </div>
-          <div className="w-60 space-y-3">
-            <div className="text-4xl text-purple-600">➕</div>
-            <h3 className="font-semibold">Create Your Own</h3>
-            <p className="text-sm text-gray-600">
-              Organizers can Post and Manage events for free.
+
+          
+          <div className="flex flex-col items-center text-center max-w-xs space-y-4">
+            <div className="flex items-center justify-center w-20 h-20 bg-[#564287] rounded-full">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" className="w-10 h-10 text-white">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 pt-2">Create Your Own</h3>
+            <p className="text-base text-gray-600">
+              Organizers can post and manage their community events for free.
             </p>
           </div>
+
         </div>
       </section>
 
