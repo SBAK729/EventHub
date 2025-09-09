@@ -18,6 +18,8 @@ import {
   UserCheck,
 } from "lucide-react";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { BadgeCheck } from "lucide-react";
 
 const AdminPage = async () => {
   const { sessionClaims } = await auth();
@@ -35,6 +37,9 @@ const AdminPage = async () => {
     page: 1, 
     limit: 10 
   });
+  const headerList = await headers();
+  const url = new URL(headerList.get('referer') || 'http://localhost');
+  const showSuccess = url.searchParams.get('success') === 'event-created';
   
   const users = await getAllUsers({ 
     query: "", 
@@ -59,6 +64,15 @@ const AdminPage = async () => {
             Manage your EventHub platform
           </p>
         </div>
+
+        {showSuccess && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-green-700">
+              <BadgeCheck className="w-5 h-5" />
+              <span>Event created successfully!</span>
+            </div>
+          </div>
+        )}
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

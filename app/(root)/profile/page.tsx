@@ -1,5 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert-dialog";
+import { BadgeCheck } from "lucide-react";
+import { headers } from "next/headers";
 import { getUserById } from "@/lib/actions/user.actions";
 import { getEventsByUser } from "@/lib/actions/event.actions";
 import { Button } from "@/components/ui/button";
@@ -17,11 +20,22 @@ const ProfilePage = async () => {
   }
 
   const user = await getUserById(userId);
+  const headerList = await headers();
+  const url = new URL(headerList.get('referer') || 'http://localhost');
+  const showSuccess = url.searchParams.get('success') === 'event-created';
   const userEvents = await getEventsByUser({ userId, page: 1 });
 
   return (
     <div className="wrapper my-8">
       <div className="max-w-4xl mx-auto">
+        {showSuccess && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-green-700">
+              <BadgeCheck className="w-5 h-5" />
+              <span>Event created successfully!</span>
+            </div>
+          </div>
+        )}
         {/* Profile Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg p-8 text-white mb-8">
           <div className="flex items-center gap-6">
