@@ -31,13 +31,20 @@ const populateEvent = (query: any) => {
 // CREATE
 export async function createEvent({ userId, event, path }: CreateEventParams) {
   try {
+    console.log('createEvent called with userId:', userId)
+    console.log('createEvent called with event data:', event)
+    
     await connectToDatabase()
+    console.log('Database connected')
 
     // Map Clerk userId to internal User._id
     const organizer = await User.findOne({ clerkId: userId })
+    console.log('Organizer found:', organizer)
     if (!organizer) throw new Error('Organizer not found')
 
     const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: organizer._id })
+    console.log('Event created in database:', newEvent)
+    
     // Revalidate key pages
     if (path) revalidatePath(path)
     revalidatePath('/profile')
@@ -46,7 +53,9 @@ export async function createEvent({ userId, event, path }: CreateEventParams) {
 
     return JSON.parse(JSON.stringify(newEvent))
   } catch (error) {
+    console.error('createEvent error:', error)
     handleError(error)
+    return null
   }
 }
 
