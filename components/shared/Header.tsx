@@ -5,14 +5,14 @@ import { Button } from "../ui/button";
 import NavItems from "./NavItems";
 import MobileNav from "./MobileNav";
 // Add an icon import for the theme toggle shown in the screenshot
-import { Sun } from "lucide-react"; 
+import { Sun, Bell } from "lucide-react"; 
 
 const Header = () => {
   return (
     // 1. Set the background color for the entire header
     <header className="w-full bg-[#6a5acd]">
       {/* 2. Replace 'wrapper' with full-width flex container and padding */}
-      <div className="flex h-20 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="flex h-12 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
         
         {/* LOGO (remains on the left) */}
         <Link href="/" className="w-36">
@@ -21,18 +21,17 @@ const Header = () => {
             alt="EventHub logo" 
           />
         </Link>
-
-        {/* This <SignedIn> block for NavItems is not in the screenshot,
-            but keeping it as requested. It's hidden on small screens. */}
-        <SignedIn>
-          <nav className="hidden md:flex md:justify-between w-full max-w-xs">
-            <NavItems />
-          </nav>
-        </SignedIn>
+                
 
         {/* RIGHT-SIDE ACTIONS CONTAINER */}
         <div className="flex items-center gap-4">
           <SignedIn>
+            <button aria-label="Toggle theme" className="text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <Sun className="h-6 w-6" />
+                </button>
+                <button aria-label="Toggle theme" className="text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                  <Bell className="h-6 w-6" />
+                </button>
             <UserButton afterSignOutUrl="/" />
             <div className="md:hidden"> {/* MobileNav only for small screens */}
               <MobileNav />
