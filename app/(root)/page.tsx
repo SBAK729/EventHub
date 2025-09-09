@@ -80,72 +80,71 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-purple-700 py-12 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-white text-balance">Recommended For You</h2>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <EventCard
-              image="assets\images\urban-concert-stage-with-purple-lighting.png"
-              category="Music"
-              title="Urban Beats Concert"
-              date="Fri, Sept 12 • 7:00 PM"
-              location="Kasarani Stadium"
-              attendees="554 attending"
-              price="500"
-              organizer="David K."
-            />
-
-            <EventCard
-              image="assets\images\volunteers-cleaning-park-environment.png"
-              category="Volunteer"
-              title="Green Future Cleanup Drive"
-              date="Sun, Sept 15 • 9:00 AM"
-              location="Uhuru Park, Nairobi"
-              attendees="204 attending"
-              price="Free"
-            />
-
-            <EventCard
-              image="assets/images/tech-hackathon-coding-workspace.png"
-              category="Tech"
-              title="Tech for Tomorrow Hackathon"
-              date="Sept 14-15 • 8:00 AM"
-              location="Strathmore University, Nairobi"
-              attendees="500 attending"
-              price="Free"
-            />
-
-            <EventCard
-              image="assets/images/jazz-festival-concert-crowd-blue-lights.png"
-              category="Music"
-              title="Summer Jazz Festival"
-              date="7/15/2025 at 7:00PM"
-              location="Central Park"
-              attendees="254 attending"
-              price="36"
-            />
-          </div>
+     <section className="bg-gradient-to-r from-[#281E3E] to-[#6950A4] py-12 md:py-16">
+    <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-2xl md:text-3xl font-bold text-white text-balance">Recommended For You</h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
-      </section>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <EventCard
+          image="assets\images\urban-concert-stage-with-purple-lighting.png"
+          category="Music"
+          title="Urban Beats Concert"
+          date="Fri, Sept 12 • 7:00 PM"
+          location="Kasarani Stadium"
+          attendees="554 attending"
+          price="500"
+        />
+
+        <EventCard
+          image="assets\images\volunteers-cleaning-park-environment.png"
+          category="Volunteer"
+          title="Green Future Cleanup Drive"
+          date="Sun, Sept 15 • 9:00 AM"
+          location="Uhuru Park, Nairobi"
+          attendees="204 attending"
+          price="Free"
+        />
+
+        <EventCard
+          image="assets/images/tech-hackathon-coding-workspace.png"
+          category="Tech"
+          title="Tech for Tomorrow Hackathon"
+          date="Sept 14-15 • 8:00 AM"
+          location="Strathmore University, Nairobi"
+          attendees="500 attending"
+          price="Free"
+        />
+
+        <EventCard
+          image="assets/images/jazz-festival-concert-crowd-blue-lights.png"
+          category="Music"
+          title="Summer Jazz Festival"
+          date="7/15/2025 at 7:00PM"
+          location="Central Park"
+          attendees="254 attending"
+          price="36"
+        />
+      </div>
+    </div>
+</section>
 
       {/* Trending in Nairobi */}
       <section className="bg-white py-12 md:py-16">
@@ -425,9 +424,9 @@ function EventCard({
           </div>
         )}
 
-        <Button asChild className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-          <Link href={id ? `/events/${id}` : '/events'}>Learn More</Link>
-        </Button>
+        <Button asChild className="w-full bg-[#564287] hover:bg-[#483773] text-white">
+    <Link href={id ? `/events/${id}` : '/events'}>Learn More</Link>
+</Button>
       </CardContent>
     </Card>
   )
