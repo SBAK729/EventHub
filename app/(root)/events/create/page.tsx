@@ -1,5 +1,6 @@
 import EventForm from "@/components/shared/EventForm"
 import { auth } from "@clerk/nextjs/server";
+import { getAllCategories, createCategory } from "@/lib/actions/category.actions";
 
 const CreateEvent = async () => {
   const { sessionClaims } = await auth();
@@ -7,6 +8,24 @@ const CreateEvent = async () => {
   const userId = sessionClaims?.userId as string;
 
   console.log("User ID in CreateEvent:", userId);
+
+  // Ensure default categories exist so the client dropdown has options
+  const existingCategories = await getAllCategories();
+  if (!existingCategories || existingCategories.length === 0) {
+    const defaults = [
+      'Technology',
+      'Business',
+      'Health & Wellness',
+      'Education',
+      'Entertainment',
+      'Sports',
+      'Community',
+      'Arts & Culture',
+    ];
+    await Promise.all(
+      defaults.map(name => createCategory({ categoryName: name }))
+    );
+  }
 
   return (
     <>

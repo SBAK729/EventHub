@@ -9,6 +9,7 @@ import Order from '../database/models/order.model';
 import Event from '../database/models/event.model';
 import {ObjectId} from 'mongodb';
 import User from '../database/models/user.model';
+import { IOrder } from "@/lib/database/models/order.model";
 
 export const checkoutOrder = async (order: CheckoutOrderParams) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -123,34 +124,39 @@ export async function getOrdersByEvent({ searchString, eventId }: GetOrdersByEve
 }
 
 // GET ORDERS BY USER
-export async function getOrdersByUser({ userId, limit = 3, page }: GetOrdersByUserParams) {
+export async function getOrdersByUser({
+  userId,
+  limit = 3,
+  page,
+}: GetOrdersByUserParams): Promise<{ data: IOrder[] }> {
   try {
-    await connectToDatabase()
+    await connectToDatabase();
 
-    const skipAmount = (Number(page) - 1) * limit
+    const skipAmount = (Number(page) - 1) * limit;
+
     // Map Clerk userId to internal User._id
     const buyer = await User.findOne({ clerkId: userId });
-    if (!buyer) throw new Error('User not found');
-    const conditions = { buyer: buyer._id }
+    if (!buyer) throw new Error("User not found");
+
+    const conditions = { buyer: buyer._id };
 
     const orders = await Order.find(conditions)
-      .sort({ createdAt: 'desc' })
+      .sort({ createdAt: "desc" })
       .skip(skipAmount)
       .limit(limit)
       .populate({
-        path: 'event',
+        path: "event",
         model: Event,
         populate: {
-          path: 'organizer',
+          path: "organizer",
           model: User,
-          select: '_id firstName lastName',
+          select: "_id firstName lastName",
         },
-      })
+      });
 
-    const ordersCount = await Order.countDocuments(conditions)
-
-    return { data: JSON.parse(JSON.stringify(orders)), totalPages: Math.ceil(ordersCount / limit) }
+    return { data: JSON.parse(JSON.stringify(orders)) as IOrder[] };
   } catch (error) {
-    handleError(error)
+    handleError(error);
+    return { data: [] }; // ensure return type is consistent
   }
 }

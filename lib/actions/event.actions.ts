@@ -38,7 +38,11 @@ export async function createEvent({ userId, event, path }: CreateEventParams) {
     if (!organizer) throw new Error('Organizer not found')
 
     const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: organizer._id })
-    revalidatePath(path)
+    // Revalidate key pages
+    if (path) revalidatePath(path)
+    revalidatePath('/profile')
+    revalidatePath('/admin')
+    revalidatePath('/')
 
     return JSON.parse(JSON.stringify(newEvent))
   } catch (error) {
@@ -76,7 +80,10 @@ export async function updateEvent({ userId, event, path }: UpdateEventParams) {
       { ...event, category: event.categoryId },
       { new: true }
     )
-    revalidatePath(path)
+    if (path) revalidatePath(path)
+    revalidatePath('/profile')
+    revalidatePath('/admin')
+    revalidatePath('/')
 
     return JSON.parse(JSON.stringify(updatedEvent))
   } catch (error) {
@@ -90,7 +97,12 @@ export async function deleteEvent({ eventId, path }: DeleteEventParams) {
     await connectToDatabase()
 
     const deletedEvent = await Event.findByIdAndDelete(eventId)
-    if (deletedEvent) revalidatePath(path)
+    if (deletedEvent) {
+      if (path) revalidatePath(path)
+      revalidatePath('/profile')
+      revalidatePath('/admin')
+      revalidatePath('/')
+    }
   } catch (error) {
     handleError(error)
   }

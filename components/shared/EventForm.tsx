@@ -3,6 +3,8 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
+// import { useToast } from "@/components/ui/use-toast"
+
 import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -74,6 +76,8 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
     form.setValue('location', address)
   }
 
+  const [successMessage, setSuccessMessage] = useState("")
+
   async function onSubmit(values: z.infer<typeof eventFormSchema>) {
     let uploadedImageUrl = values.imageUrl
 
@@ -100,13 +104,13 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
           userId,
           path: "/profile",
         })
+if (newEvent) {
+  form.reset()
+  setSuccessMessage("✅ Event created successfully!")
+  // optional: redirect after a short delay
+  setTimeout(() => router.push("/profile"), 2000)
+}
 
-        if (newEvent) {
-          form.reset()
-          // Show success message then redirect
-          alert('Event created successfully!')
-          router.push(`/events/${newEvent._id}`)
-        }
       } catch (error) {
         console.error('Create event failed:', error)
       }
@@ -134,6 +138,9 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
       }
     }
   }
+
+  
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 p-4">
@@ -439,6 +446,17 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   )}
                 </div>
               </div>
+
+              <div>
+
+              {successMessage && (
+              <div className="bg-green-100 text-green-800 p-4 rounded mb-4 text-center">
+                 {successMessage}
+                   </div>
+                 )}
+
+                 </div>
+
 
               {/* Submit Button */}
               <div className="pt-6">
