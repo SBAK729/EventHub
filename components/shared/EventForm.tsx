@@ -69,21 +69,22 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
   async function onSubmit(values: z.infer<typeof eventFormSchema>) {
     let uploadedImageUrl = values.imageUrl
 
-    if (files.length > 0) {
-      const uploaded = await startUpload(files)
-      if (!uploaded) return
-      uploadedImageUrl = uploaded[0].url
-    }
-
-    const eventData = {
-      ...values,
-      imageUrl: uploadedImageUrl,
-      location: locationType === "online" ? values.url || "" : values.location,
-    }
-
-    // step 2: enrich data before saving
-    setLoadingPreview(true)
     try {
+      if (files.length > 0) {
+        const uploaded = await startUpload(files)
+        if (!uploaded) throw new Error("Image upload failed")
+        uploadedImageUrl = uploaded[0].url
+      }
+
+      const eventData = {
+        ...values,
+        imageUrl: uploadedImageUrl,
+        location: locationType === "online" ? values.url || "" : values.location,
+      }
+
+      setLoadingPreview(true)
+      console.log("Submitting event data:", eventData)
+
       const response = await fetch("/api/enrich-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,9 +93,12 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
           description: eventData.description,
         }),
       })
-      const enriched = await response.json()
 
-      // update with AI/other API response
+      if (!response.ok) throw new Error(`AI API failed: ${response.status}`)
+
+      const enriched = await response.json()
+      console.log("AI API enriched:", enriched)
+
       const updatedData = {
         ...eventData,
         title: enriched.title || eventData.title,
@@ -105,11 +109,13 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
       setPendingEvent(updatedData)
       setShowConfirm(true)
     } catch (err) {
-      console.error("Failed enrichment:", err)
+      console.error("Submit failed:", err)
+      alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setLoadingPreview(false)
     }
   }
+
 
   async function handleConfirm() {
     if (!pendingEvent) return
@@ -149,28 +155,125 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
             </p>
           </div>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="p-8 space-y-8">
-              {/* Event Details Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">1</span>
-                  </div>
-                  <h2 className="text-xl font-semibold text-gray-800">Event Details</h2>
+          
+          <form onSubmit={form.handleSubmit(onSubmit)} className="p-8 space-y-8">
+            {/* Event Details Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">1</span>
                 </div>
+                <h2 className="text-xl font-semibold text-gray-800">Event Details</h2>
+              </div>
 
-                {/* Event Title */}
+              {/* Event Title */}
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Event Title *</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Enter event title"
+                        className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Event Description */}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Description *</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        placeholder="Describe your event..."
+                        className="min-h-[120px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Category */}
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Category *</FormLabel>
+                    <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
+                      <FormControl>
+                        <SelectTrigger className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category._id} value={category._id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Image Upload */}
+              <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Event Image *</FormLabel>
+                    <FormControl>
+                      <FileUploader
+                        onFieldChange={field.onChange}
+                        imageUrl={field.value}
+                        setFiles={setFiles}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Date & Time Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">2</span>
+                </div>
+                <h2 className="text-xl font-semibold text-gray-800">Date & Time</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="title"
+                  name="startDateTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base font-medium">Event Title *</FormLabel>
+                      <FormLabel className="text-base font-medium">Start Date & Time *</FormLabel>
                       <FormControl>
                         <Input
-                          {...field}
-                          placeholder="Enter event title"
+                          type="datetime-local"
+                          value={field.value ? field.value.toISOString().slice(0, 16) : ""}
+                          onChange={(e) => {
+                            const date = new Date(e.target.value)
+                            field.onChange(date)
+                          }}
                           className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
                       </FormControl>
@@ -179,63 +282,21 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   )}
                 />
 
-                {/* Event Description */}
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="endDateTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base font-medium">Description *</FormLabel>
+                      <FormLabel className="text-base font-medium">End Date & Time *</FormLabel>
                       <FormControl>
-                        <Textarea
-                          {...field}
-                          placeholder="Describe your event..."
-                          className="min-h-[120px] p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Category */}
-                <FormField
-                  control={form.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium">Category *</FormLabel>
-                      <Select value={field.value} onValueChange={(v) => field.onChange(v)}>
-                        <FormControl>
-                          <SelectTrigger className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category._id} value={category._id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Image Upload */}
-                <FormField
-                  control={form.control}
-                  name="imageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium">Event Image *</FormLabel>
-                      <FormControl>
-                        <FileUploader
-                          onFieldChange={field.onChange}
-                          imageUrl={field.value}
-                          setFiles={setFiles}
+                        <Input
+                          type="datetime-local"
+                          value={field.value ? field.value.toISOString().slice(0, 16) : ""}
+                          onChange={(e) => {
+                            const date = new Date(e.target.value)
+                            field.onChange(date)
+                          }}
+                          className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         />
                       </FormControl>
                       <FormMessage />
@@ -243,134 +304,136 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   )}
                 />
               </div>
+            </div>
 
-              {/* Date & Time Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">2</span>
-                  </div>
-                  <h2 className="text-xl font-semibold text-gray-800">Date & Time</h2>
+            {/* Location Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">3</span>
                 </div>
+                <h2 className="text-xl font-semibold text-gray-800">Location</h2>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="startDateTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-medium">Start Date & Time *</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="datetime-local"
-                            value={field.value ? field.value.toISOString().slice(0, 16) : ""}
-                            onChange={(e) => {
-                              const date = new Date(e.target.value)
-                              field.onChange(date)
-                            }}
-                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="endDateTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-medium">End Date & Time *</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="datetime-local"
-                            value={field.value ? field.value.toISOString().slice(0, 16) : ""}
-                            onChange={(e) => {
-                              const date = new Date(e.target.value)
-                              field.onChange(date)
-                            }}
-                            className="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {/* Location Type */}
+              <div className="space-y-3">
+                <FormLabel className="text-base font-medium">Event Type *</FormLabel>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLocationType("physical")}
+                    className={`flex-1 p-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                      locationType === "physical"
+                        ? "bg-purple-100 border-purple-500 text-purple-700"
+                        : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      <span>Physical Venue</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocationType("online")}
+                    className={`flex-1 p-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                      locationType === "online"
+                        ? "bg-purple-100 border-purple-500 text-purple-700"
+                        : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Globe className="w-5 h-5" />
+                      <span>Online Event</span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              {/* Location Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">3</span>
-                  </div>
-                  <h2 className="text-xl font-semibold text-gray-800">Location</h2>
+              {/* Physical Location */}
+              {locationType === "physical" && (
+                <div className="space-y-4">
+                  <FormLabel className="text-base font-medium">Select Location *</FormLabel>
+                  <MapComponent
+                    onLocationSelect={handleLocationSelect}
+                    initialLocation={selectedLocation || undefined}
+                  />
                 </div>
+              )}
 
-                {/* Location Type */}
-                <div className="space-y-3">
-                  <FormLabel className="text-base font-medium">Event Type *</FormLabel>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setLocationType("physical")}
-                      className={`flex-1 p-4 rounded-lg border-2 text-sm font-medium transition-colors ${
-                        locationType === "physical"
-                          ? "bg-purple-100 border-purple-500 text-purple-700"
-                          : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        <MapPin className="w-5 h-5" />
-                        <span>Physical Venue</span>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLocationType("online")}
-                      className={`flex-1 p-4 rounded-lg border-2 text-sm font-medium transition-colors ${
-                        locationType === "online"
-                          ? "bg-purple-100 border-purple-500 text-purple-700"
-                          : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        <Globe className="w-5 h-5" />
-                        <span>Online Event</span>
-                      </div>
-                    </button>
-                  </div>
+              {/* Online Event Link */}
+              {locationType === "online" && (
+                <FormField
+                  control={form.control}
+                  name="url"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Event Link *</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                            <LinkIcon className="w-5 h-5 text-gray-400" />
+                          </div>
+                          <Input
+                            {...field}
+                            placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
+                            className="pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Pricing Section */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">4</span>
                 </div>
+                <h2 className="text-xl font-semibold text-gray-800">Pricing</h2>
+              </div>
 
-                {/* Physical Location */}
-                {locationType === "physical" && (
-                  <div className="space-y-4">
-                    <FormLabel className="text-base font-medium">Select Location *</FormLabel>
-                    <MapComponent
-                      onLocationSelect={handleLocationSelect}
-                      initialLocation={selectedLocation || undefined}
-                    />
-                  </div>
-                )}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="isFree"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-base font-medium">
+                          This is a free event
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
-                {/* Online Event Link */}
-                {locationType === "online" && (
+                {!form.watch("isFree") && (
                   <FormField
                     control={form.control}
-                    name="url"
+                    name="price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-base font-medium">Event Link *</FormLabel>
+                        <FormLabel className="text-base font-medium">Price *</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                              <LinkIcon className="w-5 h-5 text-gray-400" />
+                              <DollarSign className="w-5 h-5 text-gray-400" />
                             </div>
                             <Input
                               {...field}
-                              placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
+                              type="number"
+                              placeholder="0.00"
                               className="pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             />
                           </div>
@@ -381,82 +444,25 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   />
                 )}
               </div>
+            </div>
 
-              {/* Pricing Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">4</span>
+            <div>
+
+            {/* {successMessage && (
+            <div className="bg-green-100 text-green-800 p-4 rounded mb-4 text-center">
+                {successMessage}
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-800">Pricing</h2>
+                )} */}
+
                 </div>
 
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="isFree"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-base font-medium">
-                            This is a free event
-                          </FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
 
-                  {!form.watch("isFree") && (
-                    <FormField
-                      control={form.control}
-                      name="price"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium">Price *</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                                <DollarSign className="w-5 h-5 text-gray-400" />
-                              </div>
-                              <Input
-                                {...field}
-                                type="number"
-                                placeholder="0.00"
-                                className="pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div>
-
-              {/* {successMessage && (
-              <div className="bg-green-100 text-green-800 p-4 rounded mb-4 text-center">
-                 {successMessage}
-                   </div>
-                 )} */}
-
-                 </div>
-
-
-              {/* Submit Button */}
-              <Button type="submit" disabled={loadingPreview} className="w-full">
-                {loadingPreview ? "Preparing Preview..." : `${type} Event`}
-              </Button>
-            </form>
-          </Form>
+            {/* Submit Button */}
+            <Button type="submit" disabled={loadingPreview} className="w-full">
+              {loadingPreview ? "Preparing Preview..." : `${type} Event`}
+            </Button>
+          </form>
+          
           {/* Confirmation Dialog */}
           <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
             <DialogContent>
