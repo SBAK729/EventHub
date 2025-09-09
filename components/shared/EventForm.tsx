@@ -1,4 +1,5 @@
 "use client"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -34,61 +35,44 @@ type EventFormProps = {
 
 const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
   const [files, setFiles] = useState<File[]>([])
-  const [locationType, setLocationType] = useState<"physical" | "online">("physical")
   const [categories, setCategories] = useState<any[]>([])
-  const [selectedLocation, setSelectedLocation] = useState<{
-    lat: number
-    lng: number
-    address: string
-  } | null>(null)
-  
-  const initialValues =
-    event && type === "Update"
-      ? {
-          ...event,
-          startDateTime: new Date(event.startDateTime),
-          endDateTime: new Date(event.endDateTime),
-        }
-      : eventDefaultValues
-  const router = useRouter()
+  const [locationType, setLocationType] = useState<"physical" | "online">("physical")
+  const [selectedLocation, setSelectedLocation] = useState<any>(null)
 
+  const [pendingEvent, setPendingEvent] = useState<any | null>(null) // step 1: hold form data
+  const [showConfirm, setShowConfirm] = useState(false) // show modal
+  const [loadingPreview, setLoadingPreview] = useState(false)
+
+  const router = useRouter()
   const { startUpload } = useUploadThing("imageUploader")
 
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
-    defaultValues: initialValues,
+    defaultValues: event
+      ? { ...event, startDateTime: new Date(event.startDateTime), endDateTime: new Date(event.endDateTime) }
+      : eventDefaultValues,
   })
 
   useEffect(() => {
     const fetchCategories = async () => {
-      try {
-        const categoriesList = await getAllCategories()
-        setCategories(categoriesList || [])
-      } catch (error) {
-        console.error('Error fetching categories:', error)
-      }
+      const cats = await getAllCategories()
+      setCategories(cats || [])
     }
     fetchCategories()
   }, [])
 
   const handleLocationSelect = (lat: number, lng: number, address: string) => {
     setSelectedLocation({ lat, lng, address })
-    form.setValue('location', address)
+    form.setValue("location", address)
   }
-
-  const [successMessage, setSuccessMessage] = useState("")
 
   async function onSubmit(values: z.infer<typeof eventFormSchema>) {
     let uploadedImageUrl = values.imageUrl
 
     if (files.length > 0) {
-      const uploadedImages = await startUpload(files)
-
-      if (!uploadedImages) {
-        return
-      }
-
-      uploadedImageUrl = uploadedImages[0].url
+      const uploaded = await startUpload(files)
+      if (!uploaded) return
+      uploadedImageUrl = uploaded[0].url
     }
 
     const eventData = {
@@ -97,48 +81,57 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
       location: locationType === "online" ? values.url || "" : values.location,
     }
 
-    if (type === "Create") {
-      try {
-        const newEvent = await createEvent({
-          event: eventData,
-          userId,
-          path: "/profile",
-        })
-if (newEvent) {
-  form.reset()
-  setSuccessMessage("✅ Event created successfully!")
-  // optional: redirect after a short delay
-  setTimeout(() => router.push("/profile"), 2000)
-}
+    // step 2: enrich data before saving
+    setLoadingPreview(true)
+    try {
+      const response = await fetch("/api/enrich-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: eventData.title,
+          description: eventData.description,
+        }),
+      })
+      const enriched = await response.json()
 
-      } catch (error) {
-        console.error('Create event failed:', error)
-      }
-    }
-
-    if (type === "Update") {
-      if (!eventId) {
-        router.back()
-        return
+      // update with AI/other API response
+      const updatedData = {
+        ...eventData,
+        title: enriched.title || eventData.title,
+        description: enriched.description || eventData.description,
+        tags: enriched.tags || [],
       }
 
-      try {
-        const updatedEvent = await updateEvent({
-          userId,
-          event: { ...eventData, _id: eventId },
-          path: `/events/${eventId}`,
-        })
-
-        if (updatedEvent) {
-          form.reset()
-          router.push(`/events/${updatedEvent._id}`)
-        }
-      } catch (error) {
-        console.log(error)
-      }
+      setPendingEvent(updatedData)
+      setShowConfirm(true)
+    } catch (err) {
+      console.error("Failed enrichment:", err)
+    } finally {
+      setLoadingPreview(false)
     }
   }
 
+  async function handleConfirm() {
+    if (!pendingEvent) return
+    try {
+      if (type === "Create") {
+        const newEvent = await createEvent({ event: pendingEvent, userId, path: "/profile" })
+        if (newEvent) router.push("/profile")
+      } else if (type === "Update" && eventId) {
+        const updated = await updateEvent({
+          userId,
+          event: { ...pendingEvent, _id: eventId },
+          path: `/events/${eventId}`,
+        })
+        if (updated) router.push(`/events/${updated._id}`)
+      }
+    } catch (error) {
+      console.error("Error saving event:", error)
+    } finally {
+      setShowConfirm(false)
+      setPendingEvent(null)
+    }
+  }
   
 
 
@@ -449,35 +442,52 @@ if (newEvent) {
 
               <div>
 
-              {successMessage && (
+              {/* {successMessage && (
               <div className="bg-green-100 text-green-800 p-4 rounded mb-4 text-center">
                  {successMessage}
                    </div>
-                 )}
+                 )} */}
 
                  </div>
 
 
               {/* Submit Button */}
-              <div className="pt-6">
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={form.formState.isSubmitting}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 text-lg font-semibold"
-                >
-                  {form.formState.isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Creating Event...
-                    </div>
-                  ) : (
-                    `${type} Event`
-                  )}
-                </Button>
-              </div>
+              <Button type="submit" disabled={loadingPreview} className="w-full">
+                {loadingPreview ? "Preparing Preview..." : `${type} Event`}
+              </Button>
             </form>
           </Form>
+          {/* Confirmation Dialog */}
+          <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Confirm Your Event</DialogTitle>
+              </DialogHeader>
+
+              {pendingEvent && (
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold">{pendingEvent.title}</h2>
+                  <p className="text-gray-700">{pendingEvent.description}</p>
+                  {pendingEvent.tags && (
+                    <div className="flex flex-wrap gap-2">
+                      {pendingEvent.tags.map((tag: string, i: number) => (
+                        <span key={i} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter className="flex justify-end gap-4 mt-6">
+                <Button variant="outline" onClick={() => setShowConfirm(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleConfirm}>Confirm & Create</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>
