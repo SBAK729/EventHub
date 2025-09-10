@@ -4,10 +4,12 @@ import Link from "next/link"
 import { Button } from "../ui/button"
 import NavItems from "./NavItems"
 import MobileNav from "./MobileNav"
+import { checkUser } from "@/lib/checkUser"
 
 // import MobileNav from "./MobileNav"
 
-const Header = () => {
+const Header = async() => {
+  const user = await checkUser();
   return (
     <header className="w-full border-b bg-purple-500">
       <div className="wrapper flex items-center justify-between">
