@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 
 import { connectToDatabase } from '@/lib/database'
 import User from '@/lib/database/models/user.model'
@@ -37,12 +37,12 @@ export async function getUserById(userId: string) {
 
     // Auto-provision user from Clerk if not found
     if (!user) {
-      const { sessionClaims } = await auth()
-      const email = (sessionClaims?.email as string) || ''
-      const firstName = (sessionClaims?.firstName as string) || ''
-      const lastName = (sessionClaims?.lastName as string) || ''
-      const username = (sessionClaims?.username as string) || ''
-      const photo = (sessionClaims?.image as string) || ''
+      const newUser = await currentUser()
+      const email = (newUser?.emailAddresses[0].emailAddress as string) || ''
+      const firstName = (newUser?.firstName as string) || ''
+      const lastName = (newUser?.lastName as string) || ''
+      const username = (newUser?.username as string) || ''
+      const photo = (newUser?.imageUrl as string) || ''
 
       if (!email) throw new Error('User not found')
 
@@ -54,6 +54,7 @@ export async function getUserById(userId: string) {
         username: username || email.split('@')[0],
         photo,
       })
+
     }
     return JSON.parse(JSON.stringify(user))
   } catch (error) {
