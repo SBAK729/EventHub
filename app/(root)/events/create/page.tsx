@@ -1,13 +1,16 @@
 import EventForm from "@/components/shared/EventForm"
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser} from "@clerk/nextjs/server";
 import { getAllCategories, createCategory } from "@/lib/actions/category.actions";
+import { redirect } from "next/navigation";
 
 const CreateEvent = async () => {
-  const { sessionClaims } = await auth();
+  const user = await currentUser();
 
-  const userId = sessionClaims?.userId as string;
+  if (!user) {
+    redirect("/sign-in"); // or show an error
+  }
 
-  console.log("User ID in CreateEvent:", userId);
+  const userId = user.id; // safe now
 
   // Ensure default categories exist so the client dropdown has options
   const existingCategories = await getAllCategories();
