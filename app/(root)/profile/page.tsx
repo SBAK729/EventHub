@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert-dialog";
 import { BadgeCheck } from "lucide-react";
@@ -10,16 +10,18 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, DollarSign, Edit, Trash2 } from "lucide-react";
+// import { checkUser } from "@/lib/checkUser";
 
 const ProfilePage = async () => {
-  const { sessionClaims } = await auth();
-  const userId = sessionClaims?.userId as string;
+  const user = await currentUser();
+  
+  const userId = user?.id as string;
 
   if (!userId) {
     redirect("/sign-in");
   }
 
-  const user = await getUserById(userId);
+  const existes = await getUserById(userId);
   const headerList = await headers();
   const url = new URL(headerList.get('referer') || 'http://localhost');
   const showSuccess = url.searchParams.get('success') === 'event-created';
