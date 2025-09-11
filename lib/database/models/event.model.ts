@@ -15,6 +15,11 @@ export interface IEvent extends Document {
   status: 'pending' | 'approved' | 'rejected';
   category: { _id: string, name: string }
   organizer: { _id: string, firstName: string, lastName: string }
+  moderation?: {
+    risk_score?: number
+    reasoning?: string
+    flags?: string[]
+  }
   
 }
 
@@ -30,6 +35,11 @@ const EventSchema = new Schema({
   isFree: { type: Boolean, default: false },
   url: { type: String },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  moderation: {
+    risk_score: { type: Number },
+    reasoning: { type: String },
+    flags: [{ type: String }]
+  },
   category: { type: Schema.Types.ObjectId, ref: 'Category' },
   organizer: { type: Schema.Types.ObjectId, ref: 'User' },
 })

@@ -32,7 +32,7 @@ export default function Search({ placeholder = 'Search events...', onSearch }: {
     try {
       const res = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'KK_ACCESS_PASS': 'CFtM.......' },
         body: JSON.stringify({ query, user_id: userId }),
       })
 

@@ -10,6 +10,7 @@ import Event from '../database/models/event.model';
 import {ObjectId} from 'mongodb';
 import User from '../database/models/user.model';
 import { IOrder } from "@/lib/database/models/order.model";
+import fetch from 'node-fetch'
 
 export const checkoutOrder = async (order: CheckoutOrderParams) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -60,6 +61,24 @@ export const createOrder = async (order: CreateOrderParams) => {
       event: eventObjectId,
       buyer: buyer._id,
     });
+
+    // Fire RSVP email webhook
+    try {
+      const ev = await Event.findById(eventObjectId)
+      await fetch(process.env.EMAIL_AGENT_WEBHOOK_URL || 'https://karanja-kariuki.app.n8n.cloud/webhook/90d9afd1-e9e1-4f79-ae14-aa3cde1d1247', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'KK_ACCESS_PASS': 'CFtM.......' },
+        body: JSON.stringify({
+          name: `${buyer.firstName} ${buyer.lastName}`.trim(),
+          email: buyer.email,
+          event_title: ev?.title || '',
+          event_date: ev?.startDateTime ? new Date(ev.startDateTime).toLocaleDateString() : '',
+          event_time: ev?.startDateTime ? new Date(ev.startDateTime).toLocaleTimeString() : '',
+          event_place: ev?.location || '',
+          reminder_type: 'rsvp'
+        })
+      }).catch(()=>{})
+    } catch {}
 
     return JSON.parse(JSON.stringify(newOrder));
   } catch (error) {
