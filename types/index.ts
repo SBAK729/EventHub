@@ -87,6 +87,7 @@ export type Event = {
   startDateTime: Date
   endDateTime: Date
   url: string
+  status?: 'pending' | 'approved' | 'rejected'
   organizer: {
     _id: string
     firstName: string
@@ -96,6 +97,11 @@ export type Event = {
     _id: string
     name: string
   }
+}
+
+export type UpdateEventStatusParams = {
+  eventId: string
+  status: 'approved' | 'rejected'
 }
 
 // ====== CATEGORY PARAMS

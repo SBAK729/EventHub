@@ -16,6 +16,7 @@ import {
   GetAllEventsParams,
   GetEventsByUserParams,
   GetRelatedEventsByCategoryParams,
+  UpdateEventStatusParams,
 } from '@/types'
 
 const getCategoryByName = async (name: string) => {
@@ -42,7 +43,7 @@ export async function createEvent({ userId, event, path }: CreateEventParams) {
     console.log('Organizer found:', organizer)
     if (!organizer) throw new Error('Organizer not found')
 
-    const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: organizer._id })
+    const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: organizer._id, status: 'pending' })
     console.log('Event created in database:', newEvent)
     
     // Revalidate key pages
@@ -125,7 +126,7 @@ export async function getAllEvents({ query, limit = 6, page, category }: GetAllE
     const titleCondition = query ? { title: { $regex: query, $options: 'i' } } : {}
     const categoryCondition = category ? await getCategoryByName(category) : null
     const conditions = {
-      $and: [titleCondition, categoryCondition ? { category: categoryCondition._id } : {}],
+      $and: [titleCondition, categoryCondition ? { category: categoryCondition._id } : {}, { status: 'approved' }],
     }
 
     const skipAmount = (Number(page) - 1) * limit
@@ -165,6 +166,31 @@ export async function getEventsByUser({ userId, limit = 6, page }: GetEventsByUs
     const eventsCount = await Event.countDocuments(conditions)
 
     return { data: JSON.parse(JSON.stringify(events)), totalPages: Math.ceil(eventsCount / limit) }
+  } catch (error) {
+    handleError(error)
+  }
+}
+
+// ADMIN: Approve/Reject Event
+export async function updateEventStatus({ eventId, status }: UpdateEventStatusParams) {
+  try {
+    await connectToDatabase()
+    const updated = await Event.findByIdAndUpdate(eventId, { status }, { new: true })
+    revalidatePath('/admin')
+    revalidatePath('/')
+    return JSON.parse(JSON.stringify(updated))
+  } catch (error) {
+    handleError(error)
+  }
+}
+
+// ADMIN: Get all pending events
+export async function getPendingEvents() {
+  try {
+    await connectToDatabase()
+    const eventsQuery = Event.find({ status: 'pending' }).sort({ createdAt: 'desc' })
+    const events = await populateEvent(eventsQuery)
+    return JSON.parse(JSON.stringify(events))
   } catch (error) {
     handleError(error)
   }

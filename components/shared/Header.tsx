@@ -5,13 +5,14 @@ import { Button } from "../ui/button"
 import NavItems from "./NavItems"
 import MobileNav from "./MobileNav"
 import { checkUser } from "@/lib/checkUser"
+import ThemeToggle from "./ThemeToggle"
 
 // import MobileNav from "./MobileNav"
 
 const Header = async() => {
   const user = await checkUser();
   return (
-    <header className="w-full border-b bg-purple-500">
+    <header className="w-full border-b bg-purple-500 dark:bg-purple-900">
       <div className="wrapper flex items-center justify-between">
         <Link href="/" className="w-36">
           <Image 
@@ -26,7 +27,8 @@ const Header = async() => {
           </nav>
         </SignedIn>
 
-        <div className="flex w-32 justify-end gap-3">
+        <div className="flex w-32 justify-end gap-3 items-center">
+          <ThemeToggle />
           <SignedIn>
             <UserButton />
             <MobileNav />
