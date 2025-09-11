@@ -1,6 +1,6 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { getAllEvents } from "@/lib/actions/event.actions";
+import { getAllEvents, getPendingEvents, updateEventStatus } from "@/lib/actions/event.actions";
 import { getAllUsers } from "@/lib/actions/user.actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,8 +29,14 @@ const AdminPage = async () => {
     redirect("/sign-in");
   }
 
-  // In a real app, you'd check if the user has admin privileges
-  // For now, we'll assume all authenticated users can access admin
+  // Restrict to single admin via env ADMIN_EMAIL or ADMIN_USER_ID
+  const cu = await currentUser();
+  const adminEmail = cu?.emailAddresses?.[0]?.emailAddress as string | undefined;
+  const allowedEmail = process.env.ADMIN_EMAIL;
+  const allowedUserId = process.env.ADMIN_USER_ID;
+  if ((allowedEmail && adminEmail !== allowedEmail) || (allowedUserId && userId !== allowedUserId)) {
+    redirect("/");
+  }
   const events = await getAllEvents({ 
     query: "", 
     category: "", 
@@ -46,6 +52,8 @@ const AdminPage = async () => {
     page: 1, 
     limit: 10 
   });
+
+  const pending = await getPendingEvents();
 
   // Mock stats - in a real app, these would come from your database
   const stats = {
@@ -73,6 +81,42 @@ const AdminPage = async () => {
             </div>
           </div>
         )}
+
+        {/* Pending Approvals */}
+        <div className="mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Event Approvals</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pending && pending.length > 0 ? (
+                <div className="space-y-4">
+                  {pending.map((p: any) => (
+                    <div key={p._id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img src={p.imageUrl} alt={p.title} className="w-12 h-12 rounded object-cover" />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{p.title}</p>
+                          <p className="text-sm text-muted-foreground truncate">By {p.organizer?.firstName} {p.organizer?.lastName}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <form action={async () => { 'use server'; await updateEventStatus({ eventId: p._id, status: 'approved' }) }}> 
+                          <Button type="submit" size="sm" className="bg-green-600 hover:bg-green-700">Approve</Button>
+                        </form>
+                        <form action={async () => { 'use server'; await updateEventStatus({ eventId: p._id, status: 'rejected' }) }}>
+                          <Button type="submit" size="sm" variant="destructive">Reject</Button>
+                        </form>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground">No pending events.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

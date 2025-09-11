@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Card, CardContent } from "@/components/ui/card"
@@ -30,6 +30,34 @@ export default function Home() {
   const [showResults, setShowResults] = useState(false)
   const [results, setResults] = useState<Event[]>([])
   const [message, setMessage] = useState('')
+  const [approved, setApproved] = useState<Event[]>([])
+
+  useEffect(() => {
+    const loadApproved = async () => {
+      try {
+        const res = await fetch('/api/events?limit=8&page=1', { cache: 'no-store' })
+        const json = await res.json()
+        const data: any[] = json?.data || []
+        const mapped = data.map((e: any) => ({
+          _id: e._id,
+          title: e.title,
+          category: e.category?.name || 'General',
+          startDateTime: e.startDateTime,
+          endDateTime: e.endDateTime,
+          location: e.location,
+          organizer: e.organizer ? `${e.organizer.firstName} ${e.organizer.lastName}` : '—',
+          price: e.price,
+          isFree: e.isFree,
+          imageUrl: e.imageUrl,
+          tags: ''
+        })) as Event[]
+        setApproved(mapped)
+      } catch (e) {
+        // ignore
+      }
+    }
+    loadApproved()
+  }, [])
 
   // Callback triggered by Search component
   const handleSearchResults = (data: Event[], msg: string) => {
@@ -43,9 +71,9 @@ export default function Home() {
       {/* Hero Section with Search */}
       <section className="relative h-[500px] flex items-center justify-center bg-cover bg-center"
         style={{ backgroundImage: "url('/assets/images/hero.png')" }}>
-        <div className="text-center text-white space-y-6">
-          <h1 className="text-4xl font-bold">Your Community is Waiting</h1>
-          <p className="text-lg max-w-2xl mx-auto">
+        <div className="text-center text-white space-y-6 px-4">
+          <h1 className="text-4xl md:text-5xl font-extrabold drop-shadow">Your Community is Waiting</h1>
+          <p className="text-lg md:text-xl max-w-2xl mx-auto">
             Discover local workshops, cleanups, and festivals. Connect with your
             neighbors and make a difference.
           </p>
@@ -97,7 +125,7 @@ export default function Home() {
       ) : (
         <>
           <section className="bg-gray-100 py-16 text-center">
-            <h2 className="text-2xl font-bold mb-8">Connect in Three Easy Steps</h2>
+            <h2 className="text-2xl md:text-3xl font-bold mb-8">Connect in Three Easy Steps</h2>
             <div className="flex justify-center gap-12">
               <div className="w-60 space-y-3">
                 <div className="text-4xl text-purple-600">🔍</div>
@@ -146,46 +174,60 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <EventCard
-                  image="assets\images\urban-concert-stage-with-purple-lighting.png"
-                  category="Music"
-                  title="Urban Beats Concert"
-                  date="Fri, Sept 12 • 7:00 PM"
-                  location="Kasarani Stadium"
-                  attendees="554 attending"
-                  price="500"
-                  organizer="David K."
-                />
-
-                <EventCard
-                  image="assets\images\volunteers-cleaning-park-environment.png"
-                  category="Volunteer"
-                  title="Green Future Cleanup Drive"
-                  date="Sun, Sept 15 • 9:00 AM"
-                  location="Uhuru Park, Nairobi"
-                  attendees="204 attending"
-                  price="Free"
-                />
-
-                <EventCard
-                  image="assets/images/tech-hackathon-coding-workspace.png"
-                  category="Tech"
-                  title="Tech for Tomorrow Hackathon"
-                  date="Sept 14-15 • 8:00 AM"
-                  location="Strathmore University, Nairobi"
-                  attendees="500 attending"
-                  price="Free"
-                />
-
-                <EventCard
-                  image="assets/images/jazz-festival-concert-crowd-blue-lights.png"
-                  category="Music"
-                  title="Summer Jazz Festival"
-                  date="7/15/2025 at 7:00PM"
-                  location="Central Park"
-                  attendees="254 attending"
-                  price="36"
-                />
+                {approved.length > 0 ? approved.map((ev) => (
+                  <EventCard
+                    key={ev._id}
+                    id={ev._id}
+                    image={ev.imageUrl}
+                    category={ev.category}
+                    title={ev.title}
+                    date={new Date(ev.startDateTime).toLocaleString()}
+                    location={ev.location}
+                    attendees={''}
+                    price={ev.isFree ? 'Free' : ev.price}
+                    organizer={ev.organizer}
+                  />
+                )) : (
+                  <>
+                    <EventCard
+                      image="assets\\images\\urban-concert-stage-with-purple-lighting.png"
+                      category="Music"
+                      title="Urban Beats Concert"
+                      date="Fri, Sept 12 • 7:00 PM"
+                      location="Kasarani Stadium"
+                      attendees="554 attending"
+                      price="500"
+                      organizer="David K."
+                    />
+                    <EventCard
+                      image="assets\\images\\volunteers-cleaning-park-environment.png"
+                      category="Volunteer"
+                      title="Green Future Cleanup Drive"
+                      date="Sun, Sept 15 • 9:00 AM"
+                      location="Uhuru Park, Nairobi"
+                      attendees="204 attending"
+                      price="Free"
+                    />
+                    <EventCard
+                      image="assets/images/tech-hackathon-coding-workspace.png"
+                      category="Tech"
+                      title="Tech for Tomorrow Hackathon"
+                      date="Sept 14-15 • 8:00 AM"
+                      location="Strathmore University, Nairobi"
+                      attendees="500 attending"
+                      price="Free"
+                    />
+                    <EventCard
+                      image="assets/images/jazz-festival-concert-crowd-blue-lights.png"
+                      category="Music"
+                      title="Summer Jazz Festival"
+                      date="7/15/2025 at 7:00PM"
+                      location="Central Park"
+                      attendees="254 attending"
+                      price="36"
+                    />
+                  </>
+                )}
               </div>
             </div>
           </section>
@@ -290,19 +332,42 @@ export default function Home() {
             <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
               <h2 className="text-2xl md:text-3xl font-bold mb-12 text-balance">What Our Community is Saying</h2>
 
-              <Card className="max-w-2xl mx-auto">
-                <CardContent className="p-8">
-                  <div className="text-4xl text-purple-600 mb-4">"</div>
-                  <p className="text-lg mb-6 text-pretty">
-                    Posting my events on EventHub has doubled my attendance, it's the easiest way to reach the right
-                    audience.
-                  </p>
-                  <div>
-                    <p className="font-semibold">David Kamau</p>
-                    <p className="text-muted-foreground text-sm">Community Workshop Organizer</p>
+              <div className="relative max-w-3xl mx-auto">
+                <div className="overflow-hidden">
+                  <div className="flex gap-6 animate-[slide_24s_linear_infinite] hover:[animation-play-state:paused]">
+                    {[{
+                      quote: "EventHub doubled our attendance in two months.",
+                      name: "David Kamau",
+                      title: "Workshop Organizer"
+                    },{
+                      quote: "The checkout is seamless. Our team loves it.",
+                      name: "Aisha Ali",
+                      title: "Community Lead"
+                    },{
+                      quote: "The easiest way to discover local events.",
+                      name: "Brian Otieno",
+                      title: "Student"
+                    },{
+                      quote: "Posting events takes minutes. So good!",
+                      name: "Lucy Wanjiru",
+                      title: "Volunteer Coordinator"
+                    }].map((t, idx) => (
+                      <Card key={idx} className="min-w-[280px] sm:min-w-[360px]">
+                        <CardContent className="p-6 text-left">
+                          <div className="text-3xl text-purple-600 mb-3">"</div>
+                          <p className="mb-4 text-pretty">{t.quote}</p>
+                          <div>
+                            <p className="font-semibold">{t.name}</p>
+                            <p className="text-muted-foreground text-sm">{t.title}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                <style>{`@keyframes slide { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
+              </div>
             </div>
           </section>
 
@@ -314,8 +379,8 @@ export default function Home() {
                 EventHub is the easiest way to reach an engaged local audience. Post your event in minutes and watch your
                 community grow.
               </p>
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 text-lg">
-                Create an Event for Free
+              <Button asChild className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 text-lg">
+                <Link href="/events/create">Create an Event for Free</Link>
               </Button>
             </div>
           </section>
@@ -323,7 +388,7 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <footer className="bg-purple-700 text-white py-12">
+      <footer className="bg-purple-700 dark:bg-purple-950 text-white py-12">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
@@ -353,9 +418,7 @@ export default function Home() {
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-white/80 hover:text-white">
-                    About Us
-                  </a>
+                  <Link href="/about" className="text-white/80 hover:text-white">About Us</Link>
                 </li>
                 <li>
                   <a href="#" className="text-white/80 hover:text-white">
@@ -471,9 +534,15 @@ function EventCard({
           </div>
         )}
 
-        <Button asChild className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-          <Link href={id ? `/events/${id}` : '/events'}>Learn More</Link>
-        </Button>
+        {id ? (
+          <Button asChild className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+            <Link href={`/events/${id}`}>Learn More</Link>
+          </Button>
+        ) : (
+          <Button disabled className="w-full bg-gray-300 text-gray-600 cursor-not-allowed">
+            Learn More
+          </Button>
+        )}
       </CardContent>
     </Card>
   )

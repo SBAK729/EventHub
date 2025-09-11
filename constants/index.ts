@@ -16,6 +16,10 @@ export const headerLinks = [
     route: '/my-tickets',
   },
   {
+    label: 'About',
+    route: '/about',
+  },
+  {
     label: 'Admin',
     route: '/admin',
   },
