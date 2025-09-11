@@ -58,7 +58,8 @@ export async function createEvent({ userId, event, path }: CreateEventParams) {
         body: JSON.stringify({
           event_id: newEvent._id.toString(),
           title: newEvent.title,
-          description: newEvent.description || ''
+          description: newEvent.description || '',
+          callback_url: process.env.APP_BASE_URL + '/api/events/moderation'
         })
       }).catch(() => { })
     } catch { }
@@ -118,7 +119,8 @@ export async function updateEvent({ userId, event, path }: UpdateEventParams) {
           body: JSON.stringify({
             event_id: updatedEvent._id.toString(),
             title: updatedEvent.title,
-            description: updatedEvent.description || ''
+            description: updatedEvent.description || '',
+            callback_url: process.env.APP_BASE_URL + '/api/events/moderation'
           })
         }).catch(() => { })
       } catch { }
