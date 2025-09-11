@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'  // Update the existing import
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { MessageCircle, Send, X, Bot, User } from 'lucide-react'
 import { useUser } from "@clerk/nextjs"
-
 
 interface Message {
   id: string
@@ -25,6 +24,10 @@ const Chatbot = () => {
       timestamp: new Date()
     }
   ])
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const { user } = useUser()
@@ -169,6 +172,7 @@ const Chatbot = () => {
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input */}
