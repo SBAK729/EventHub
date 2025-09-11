@@ -1,323 +1,384 @@
 "use client"
-
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { eventFormSchema } from "@/lib/validator"
-import type * as z from "zod"
-import { eventDefaultValues } from "@/constants"
-import { useState } from "react"
-import { useUploadThing } from "@/lib/uploadthing"
-
-import "react-datepicker/dist/react-datepicker.css"
-import { Checkbox } from "../ui/checkbox"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createEvent, updateEvent } from "@/lib/actions/event.actions"
-import type { IEvent } from "@/lib/database/models/event.model"
+import { getAllCategories } from "@/lib/actions/category.actions"
+import { useUploadThing } from "@/lib/uploadthing"
+import { FileUploader } from "./FileUploader"
+import MapComponent from "./MapComponent"
+
+type IEventForm = {
+  _id?: string
+  title: string
+  description: string
+  categoryId: string
+  imageUrl: string
+  startDateTime: string   // string for input
+  endDateTime: string
+  location: string
+  url?: string
+  isFree: boolean
+  price: string           // keep string in form
+  tags?: string[]
+}
+
+type BackendEventPayload = {
+  _id?: string
+  title: string
+  description: string
+  categoryId: string
+  imageUrl: string
+  startDateTime: Date
+  endDateTime: Date
+  location: string
+  url: string
+  isFree: boolean
+  price: string
+  tags: string[]
+}
 
 type EventFormProps = {
   userId: string
   type: "Create" | "Update"
-  event?: IEvent
+  event?: IEventForm
   eventId?: string
 }
 
-const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
-  const [files, setFiles] = useState<File[]>([])
-  const [locationType, setLocationType] = useState<"physical" | "online">("physical")
-  const initialValues =
-    event && type === "Update"
-      ? {
-          ...event,
-          startDateTime: new Date(event.startDateTime),
-          endDateTime: new Date(event.endDateTime),
-        }
-      : eventDefaultValues
-  const router = useRouter()
+const eventDefaultValues: IEventForm = {
+  title: "",
+  description: "",
+  categoryId: "",
+  imageUrl: "",
+  startDateTime: "",
+  endDateTime: "",
+  location: "",
+  url: "",
+  isFree: true,
+  price: "",
+  tags: [],
+}
 
+function convertFormToBackend(e: IEventForm): BackendEventPayload {
+  return {
+    _id: e._id,
+    title: e.title,
+    description: e.description,
+    categoryId: e.categoryId,
+    imageUrl: e.imageUrl,
+    startDateTime: e.startDateTime ? new Date(e.startDateTime) : new Date(),
+    endDateTime: e.endDateTime ? new Date(e.endDateTime) : new Date(),
+    location: e.location ?? "",
+    url: e.url ?? "",
+    isFree: e.isFree,
+    price: e.price || "0",
+    tags: e.tags ?? [],
+  }
+}
+
+const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
+  const [formData, setFormData] = useState<IEventForm>(event || eventDefaultValues)
+  const [files, setFiles] = useState<File[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [locationType, setLocationType] = useState<"physical" | "online">("physical")
+  const [selectedLocation, setSelectedLocation] = useState<any>(null)
+  const [pendingEvent, setPendingEvent] = useState<IEventForm | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [loadingPreview, setLoadingPreview] = useState(false)
+
+  const router = useRouter()
   const { startUpload } = useUploadThing("imageUploader")
 
-  const form = useForm<z.infer<typeof eventFormSchema>>({
-    resolver: zodResolver(eventFormSchema),
-    defaultValues: initialValues,
-  })
-
-  async function onSubmit(values: z.infer<typeof eventFormSchema>) {
-    let uploadedImageUrl = values.imageUrl
-
-    if (files.length > 0) {
-      const uploadedImages = await startUpload(files)
-
-      if (!uploadedImages) {
-        return
-      }
-
-      uploadedImageUrl = uploadedImages[0].url
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const cats = await getAllCategories()
+      setCategories(cats || [])
     }
+    fetchCategories()
+  }, [])
 
-    if (type === "Create") {
-      try {
-        const newEvent = await createEvent({
-          event: { ...values, imageUrl: uploadedImageUrl },
-          userId,
-          path: "/profile",
-        })
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, type } = e.target as HTMLInputElement
+    const value = type === "checkbox"
+      ? (e.target as HTMLInputElement).checked
+      : e.target.value
 
-        if (newEvent) {
-          form.reset()
-          router.push(`/events/${newEvent._id}`)
-        }
-      } catch (error) {
-        console.log(error)
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleLocationSelect = (lat: number, lng: number, address: string) => {
+    setSelectedLocation({ lat, lng, address })
+    setFormData((prev) => ({ ...prev, location: address }))
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    console.log("✅ Submit fired with values:", formData)
+
+    let uploadedImageUrl = formData.imageUrl
+
+    try {
+      if (files.length > 0) {
+        const uploaded = await startUpload(files)
+        if (!uploaded) throw new Error("Image upload failed")
+        uploadedImageUrl = uploaded[0].url
       }
+
+      const eventData = {
+        ...formData,
+        imageUrl: uploadedImageUrl,
+        location: locationType === "online" ? formData.url || "" : formData.location,
+      }
+
+      // ✅ Skip AI enrichment API for now
+      setPendingEvent(eventData)
+      setShowConfirm(true)
+    } catch (err) {
+      console.error("Submit failed:", err)
+      alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setLoadingPreview(false)
     }
+  }
 
-    if (type === "Update") {
-      if (!eventId) {
-        router.back()
-        return
-      }
+  const handleConfirm = async () => {
+    if (!pendingEvent) return
+    try {
+      const backendEvent = convertFormToBackend(pendingEvent)
 
-      try {
-        const updatedEvent = await updateEvent({
+      if (type === "Create") {
+        const newEvent = await createEvent({ event: backendEvent, userId, path: "/profile" })
+        if (newEvent) router.push("/profile")
+      } else if (type === "Update" && eventId) {
+        const updated = await updateEvent({
           userId,
-          event: { ...values, imageUrl: uploadedImageUrl, _id: eventId },
+          event: { ...backendEvent, _id: eventId },
           path: `/events/${eventId}`,
         })
-
-        if (updatedEvent) {
-          form.reset()
-          router.push(`/events/${updatedEvent._id}`)
-        }
-      } catch (error) {
-        console.log(error)
+        if (updated) router.push(`/events/${updated._id}`)
       }
+    } catch (error) {
+      console.error("Error saving event:", error)
+    } finally {
+      setShowConfirm(false)
+      setPendingEvent(null)
     }
   }
 
   return (
-    // <div className="min-h-screen bg-gradient-to-br from-purple-100 to-purple-200 p-4">
-      <div className="w-full mx-auto">
-        {/* <div className="bg-purple-600 text-white p-4 rounded-t-xl flex items-center justify-between"> */}
-          <div className="flex items-center gap-2">
-            {/* <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center"> */}
-              {/* <span className="text-purple-600 font-bold text-sm">C</span> */}
-            {/* </div> */}
-            {/* <span className="font-semibold">Event Hub</span> */}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 p-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-6">
+            <h1 className="text-3xl font-bold text-center">{type} Event</h1>
+            <p className="text-center text-purple-100 mt-2">
+              Create an amazing event for your community
+            </p>
           </div>
-          <button className="text-white">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        {/* </div> */}
 
-        <div className="bg-white rounded-b-xl shadow-lg bg-center">
-          <div className="p-6 border-b">
-            <h1 className="text-2xl font-bold text-center mb-6 text-purple-600">Create Event</h1>
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            {/* Event Details */}
+            <div className="space-y-4">
+              <label>
+                Event Title *
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border rounded-lg"
+                  required
+                />
+              </label>
 
-            
+              <label>
+                Description *
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border rounded-lg min-h-[120px]"
+                  required
+                />
+              </label>
 
-            {/* Step indicator */}
-            <div className="flex items-center justify-center mb-8">
-              {["Details", "Date & Location", "Review"].map((step, index) => (
-                <div key={index} className="flex items-center flex-1">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      index === 1
-                        ? "bg-purple-600 text-white"
-                        : index === 0
-                          ? "bg-purple-600 text-white"
-                          : "border-2 border-gray-300 text-gray-400"
-                    }`}
-                  >
-                    {index < 1 ? "✓" : index + 1}
-                  </div>
-                  {index < 2 && (
-                    <div className={`flex-1 h-0.5 mx-4 ${index === 0 ? "bg-purple-600" : "bg-gray-300"}`} />
-                  )}
-                </div>
-              ))}
-            </div>
-          {/* </div> */}
+              <label>
+                Category *
+                <select
+                  name="categoryId"
+                  value={formData.categoryId}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border rounded-lg"
+                  required
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-6">
-              <h2 className="text-xl font-semibold text-center text-gray-800 mb-6">When and where is it happening?</h2>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Event Date</label>
-                <FormField
-                  control={form.control}
-                  name="startDateTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          value={field.value ? field.value.toISOString().split("T")[0] : ""}
-                          onChange={(e) => {
-                            const date = new Date(e.target.value)
-                            field.onChange(date)
-                          }}
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <div>
+                <label>Event Image *</label>
+                <FileUploader
+                  onFieldChange={(url: string) => setFormData((prev) => ({ ...prev, imageUrl: url }))}
+                  imageUrl={formData.imageUrl}
+                  setFiles={setFiles}
                 />
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Start Time</label>
-                  <FormField
-                    control={form.control}
-                    name="startDateTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            value={field.value ? field.value.toTimeString().slice(0, 5) : ""}
-                            onChange={(e) => {
-                              const currentDate = field.value || new Date()
-                              const [hours, minutes] = e.target.value.split(":")
-                              const newDate = new Date(currentDate)
-                              newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes))
-                              field.onChange(newDate)
-                            }}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+            {/* Date & Time */}
+            <div className="space-y-4">
+              <label>
+                Start Date & Time *
+                <input
+                  type="datetime-local"
+                  name="startDateTime"
+                  value={formData.startDateTime}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border rounded-lg"
+                  required
+                />
+              </label>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">End Time</label>
-                  <FormField
-                    control={form.control}
-                    name="endDateTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            value={field.value ? field.value.toTimeString().slice(0, 5) : ""}
-                            onChange={(e) => {
-                              const currentDate = field.value || new Date()
-                              const [hours, minutes] = e.target.value.split(":")
-                              const newDate = new Date(currentDate)
-                              newDate.setHours(Number.parseInt(hours), Number.parseInt(minutes))
-                              field.onChange(newDate)
-                            }}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+              <label>
+                End Date & Time *
+                <input
+                  type="datetime-local"
+                  name="endDateTime"
+                  value={formData.endDateTime}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border rounded-lg"
+                  required
+                />
+              </label>
+            </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox id="all-day" className="w-4 h-4" />
-                <label htmlFor="all-day" className="text-sm text-gray-700">
-                  All-day event
-                </label>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700">Location Type</label>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setLocationType("physical")}
-                    className={`flex-1 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                      locationType === "physical"
-                        ? "bg-purple-100 border-purple-500 text-purple-700"
-                        : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    Venue (Physical Location)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLocationType("online")}
-                    className={`flex-1 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                      locationType === "online"
-                        ? "bg-purple-100 border-purple-500 text-purple-700"
-                        : "bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    Online Event
-                  </button>
-                </div>
+            {/* Location */}
+            <div className="space-y-4">
+              <label>Event Type *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setLocationType("physical")}
+                  className={`flex-1 p-4 rounded-lg border-2 ${
+                    locationType === "physical" ? "bg-purple-100 border-purple-500" : "bg-gray-50 border-gray-300"
+                  }`}
+                >
+                  Physical Venue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocationType("online")}
+                  className={`flex-1 p-4 rounded-lg border-2 ${
+                    locationType === "online" ? "bg-purple-100 border-purple-500" : "bg-gray-50 border-gray-300"
+                  }`}
+                >
+                  Online Event
+                </button>
               </div>
 
               {locationType === "physical" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Venue Address</label>
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <div className="relative">
-                            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                              <svg
-                                className="w-5 h-5 text-gray-400"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                              </svg>
-                            </div>
-                            <Input
-                              {...field}
-                              placeholder="Enter venue address"
-                              className="pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <MapComponent
+                  onLocationSelect={handleLocationSelect}
+                  initialLocation={selectedLocation || undefined}
+                />
               )}
 
-               <Button 
-          type="submit"
-          size="lg"
-          disabled={form.formState.isSubmitting}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white col-span-2"
-        >
-          {form.formState.isSubmitting ? (
-            'Submitting...'
-          ): `${type} Event `}</Button>
-            </form>
-          </Form>
+              {locationType === "online" && (
+                <label>
+                  Event Link *
+                  <input
+                    type="url"
+                    name="url"
+                    value={formData.url}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="https://zoom.us/j/123456789"
+                    required
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* Pricing */}
+            <div className="space-y-4">
+              <label>
+                <input
+                  type="checkbox"
+                  name="isFree"
+                  checked={formData.isFree}
+                  onChange={handleInputChange}
+                />{" "}
+                Free Event
+              </label>
+
+              {!formData.isFree && (
+                <label>
+                  Price *
+                  <input
+                    type="number"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border rounded-lg"
+                    min={0}
+                    step={0.01}
+                    required
+                  />
+                </label>
+              )}
+            </div>
+
+            <button type="submit" disabled={loadingPreview} className="w-full p-3 bg-purple-600 text-white rounded-lg">
+              {loadingPreview ? "Preparing Preview..." : `${type} Event`}
+            </button>
+          </form>
+
+          {/* Confirmation Dialog */}
+          {showConfirm && pendingEvent && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+              <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-xl w-full space-y-6 relative z-[10000]">
+                <h2 className="text-2xl font-extrabold text-gray-900">{pendingEvent.title}</h2>
+                <p className="text-gray-700 text-lg">{pendingEvent.description}</p>
+
+                {(pendingEvent.tags ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    {(pendingEvent.tags ?? []).map((tag, i) => (
+                      <span
+                        key={i}
+                        className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm font-medium shadow-sm"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-4 pt-4">
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-800 text-white font-semibold rounded-xl shadow-md hover:opacity-90 transition"
+                  >
+                    Confirm & {type}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

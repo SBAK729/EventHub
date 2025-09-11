@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { auth, currentUser } from '@clerk/nextjs/server'
 
 import { connectToDatabase } from '@/lib/database'
 import User from '@/lib/database/models/user.model'
@@ -25,14 +26,71 @@ export async function getUserById(userId: string) {
   try {
     await connectToDatabase()
 
-    const user = await User.findById(userId)
+    // Try by Mongo _id first; if it fails, fall back to Clerk ID
+    let user = null as any
+    try {
+      user = await User.findById(userId)
+    } catch {}
+    if (!user) {
+      user = await User.findOne({ clerkId: userId })
+    }
 
-    if (!user) throw new Error('User not found')
+    // Auto-provision user from Clerk if not found
+    if (!user) {
+      const newUser = await currentUser()
+      const email = (newUser?.emailAddresses[0].emailAddress as string) || ''
+      const firstName = (newUser?.firstName as string) || ''
+      const lastName = (newUser?.lastName as string) || ''
+      const username = (newUser?.username as string) || ''
+      const photo = (newUser?.imageUrl as string) || ''
+
+      if (!email) throw new Error('User not found')
+
+      user = await User.create({
+        clerkId: userId,
+        email,
+        firstName,
+        lastName,
+        username: username || email.split('@')[0],
+        photo,
+      })
+
+    }
     return JSON.parse(JSON.stringify(user))
   } catch (error) {
     handleError(error)
   }
 }
+
+export const getAllUsers = async ({
+  query,
+  page,
+  limit,
+}: {
+  query: string;
+  page: number;
+  limit: number;
+}) => {
+  try {
+    await connectToDatabase();
+
+    const skip = (page - 1) * limit;
+
+    const users = await User.find(
+      query
+        ? { firstName: { $regex: query, $options: "i" } } // example: search by firstName
+        : {},
+      { password: 0 }
+    )
+      .skip(skip)
+      .limit(limit);
+
+    return JSON.parse(JSON.stringify(users));
+  } catch (error) {
+    handleError(error);
+  }
+};
+
 
 export async function updateUser(clerkId: string, user: UpdateUserParams) {
   try {

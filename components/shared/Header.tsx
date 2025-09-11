@@ -4,13 +4,15 @@ import Link from "next/link"
 import { Button } from "../ui/button"
 import NavItems from "./NavItems"
 import MobileNav from "./MobileNav"
+import { checkUser } from "@/lib/checkUser"
 
 // import MobileNav from "./MobileNav"
 
-const Header = () => {
+const Header = async() => {
+  const user = await checkUser();
   return (
     <header className="w-full border-b bg-purple-500">
-      <div className=" flex items-center justify-between">
+      <div className="wrapper flex items-center justify-between">
         <Link href="/" className="w-36">
           <Image 
             src="/assets/images/logo.png" width={128} height={38}
@@ -19,25 +21,18 @@ const Header = () => {
         </Link>
 
         <SignedIn>
-          <nav className="md:flex-between hidden w-full max-w-xs">
+          <nav className="hidden md:flex md:justify-between w-full max-w-xs">
             <NavItems />
-
           </nav>
-          </SignedIn>
-
-        <SignedIn>
-          
-             <UserButton afterSignOutUrl="/" />
-          
         </SignedIn>
 
         <div className="flex w-32 justify-end gap-3">
-          <SignedIn> {/* Option 1: keep Clerk’s dropdown menu */}
+          <SignedIn>
             <UserButton />
             <MobileNav />
           </SignedIn>
           <SignedOut>
-            <Button asChild className="bg-purple-500" size="lg">
+            <Button asChild className="bg-purple-600 hover:bg-purple-700" size="lg">
               <Link href="/sign-in">
                 Login
               </Link>

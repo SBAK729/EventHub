@@ -7,6 +7,7 @@ import Event from '@/lib/database/models/event.model'
 import User from '@/lib/database/models/user.model'
 import Category from '@/lib/database/models/category.model'
 import { handleError } from '@/lib/utils'
+import { ObjectId } from 'mongodb'
 
 import {
   CreateEventParams,
@@ -30,17 +31,31 @@ const populateEvent = (query: any) => {
 // CREATE
 export async function createEvent({ userId, event, path }: CreateEventParams) {
   try {
+    console.log('createEvent called with userId:', userId)
+    console.log('createEvent called with event data:', event)
+    
     await connectToDatabase()
+    console.log('Database connected')
 
-    const organizer = await User.findById(userId)
+    // Map Clerk userId to internal User._id
+    const organizer = await User.findOne({ clerkId: userId })
+    console.log('Organizer found:', organizer)
     if (!organizer) throw new Error('Organizer not found')
 
-    const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: userId })
-    revalidatePath(path)
+    const newEvent = await Event.create({ ...event, category: event.categoryId, organizer: organizer._id })
+    console.log('Event created in database:', newEvent)
+    
+    // Revalidate key pages
+    if (path) revalidatePath(path)
+    revalidatePath('/profile')
+    revalidatePath('/admin')
+    revalidatePath('/')
 
     return JSON.parse(JSON.stringify(newEvent))
   } catch (error) {
+    console.error('createEvent error:', error)
     handleError(error)
+    return null
   }
 }
 
@@ -74,7 +89,10 @@ export async function updateEvent({ userId, event, path }: UpdateEventParams) {
       { ...event, category: event.categoryId },
       { new: true }
     )
-    revalidatePath(path)
+    if (path) revalidatePath(path)
+    revalidatePath('/profile')
+    revalidatePath('/admin')
+    revalidatePath('/')
 
     return JSON.parse(JSON.stringify(updatedEvent))
   } catch (error) {
@@ -88,7 +106,12 @@ export async function deleteEvent({ eventId, path }: DeleteEventParams) {
     await connectToDatabase()
 
     const deletedEvent = await Event.findByIdAndDelete(eventId)
-    if (deletedEvent) revalidatePath(path)
+    if (deletedEvent) {
+      if (path) revalidatePath(path)
+      revalidatePath('/profile')
+      revalidatePath('/admin')
+      revalidatePath('/')
+    }
   } catch (error) {
     handleError(error)
   }
@@ -128,7 +151,9 @@ export async function getEventsByUser({ userId, limit = 6, page }: GetEventsByUs
   try {
     await connectToDatabase()
 
-    const conditions = { organizer: userId }
+    const owner = await User.findOne({ clerkId: userId })
+    if (!owner) throw new Error('User not found')
+    const conditions = { organizer: owner._id }
     const skipAmount = (page - 1) * limit
 
     const eventsQuery = Event.find(conditions)
