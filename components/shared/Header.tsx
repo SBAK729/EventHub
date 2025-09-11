@@ -22,12 +22,12 @@ const Header = async() => {
         </Link>
 
         <SignedIn>
-          <nav className="hidden md:flex md:justify-between w-full max-w-xs">
+          <nav className="hidden md:flex flex-1 justify-center">
             <NavItems />
           </nav>
         </SignedIn>
 
-        <div className="flex w-32 justify-end gap-3 items-center">
+        <div className="flex shrink-0 justify-end gap-3 items-center">
           <ThemeToggle />
           <SignedIn>
             <UserButton />
