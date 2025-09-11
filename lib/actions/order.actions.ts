@@ -7,10 +7,10 @@ import { handleError } from '../utils';
 import { connectToDatabase } from '../database';
 import Order from '../database/models/order.model';
 import Event from '../database/models/event.model';
-import {ObjectId} from 'mongodb';
+import { ObjectId } from 'mongodb';
 import User from '../database/models/user.model';
 import { IOrder } from "@/lib/database/models/order.model";
-import fetch from 'node-fetch'
+// ❌ removed: import fetch from 'node-fetch'
 
 export const checkoutOrder = async (order: CheckoutOrderParams) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -67,7 +67,10 @@ export const createOrder = async (order: CreateOrderParams) => {
       const ev = await Event.findById(eventObjectId)
       await fetch(process.env.EMAIL_AGENT_WEBHOOK_URL || 'https://karanja-kariuki.app.n8n.cloud/webhook/90d9afd1-e9e1-4f79-ae14-aa3cde1d1247', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'KK_ACCESS_PASS': 'CFtM.......' },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'KK_ACCESS_PASS': process.env.KK_ACCESS_PASS || ''  // ✅ use env, not hardcoded
+        },
         body: JSON.stringify({
           name: `${buyer.firstName} ${buyer.lastName}`.trim(),
           email: buyer.email,
@@ -103,9 +106,7 @@ export async function getOrdersByEvent({ searchString, eventId }: GetOrdersByEve
           as: 'buyer',
         },
       },
-      {
-        $unwind: '$buyer',
-      },
+      { $unwind: '$buyer' },
       {
         $lookup: {
           from: 'events',
@@ -114,9 +115,7 @@ export async function getOrdersByEvent({ searchString, eventId }: GetOrdersByEve
           as: 'event',
         },
       },
-      {
-        $unwind: '$event',
-      },
+      { $unwind: '$event' },
       {
         $project: {
           _id: 1,
@@ -131,7 +130,10 @@ export async function getOrdersByEvent({ searchString, eventId }: GetOrdersByEve
       },
       {
         $match: {
-          $and: [{ eventId: eventObjectId }, { buyer: { $regex: RegExp(searchString, 'i') } }],
+          $and: [
+            { eventId: eventObjectId },
+            { buyer: { $regex: RegExp(searchString, 'i') } }
+          ],
         },
       },
     ])
