@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getEventById } from '@/lib/actions/event.actions'
 
-export async function GET(request: NextRequest, context: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: { id: string } } // must NOT be a Promise
+) {
   try {
     const { id } = context.params
     const event = await getEventById(id)
