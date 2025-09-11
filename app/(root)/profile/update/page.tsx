@@ -40,7 +40,7 @@ export default function UpdateProfilePage() {
       try {
         const res = await fetch("/api/profile", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "KK_ACCESS_PASS": "CFtM......." },
           body: JSON.stringify(form),
         })
         if (!res.ok) throw new Error("Failed to update profile")
