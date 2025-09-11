@@ -1,36 +1,50 @@
 "use client"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Calendar, MapPin, DollarSign, Upload, Link as LinkIcon, Globe } from "lucide-react"
 import { createEvent, updateEvent } from "@/lib/actions/event.actions"
 import { getAllCategories } from "@/lib/actions/category.actions"
 import { useUploadThing } from "@/lib/uploadthing"
 import { FileUploader } from "./FileUploader"
 import MapComponent from "./MapComponent"
 
-type IEvent = {
+type IEventForm = {
   _id?: string
   title: string
   description: string
   categoryId: string
   imageUrl: string
-  startDateTime: string
+  startDateTime: string   // string for input
   endDateTime: string
-  location?: string
+  location: string
   url?: string
   isFree: boolean
-  price?: number
+  price: string           // keep string in form
   tags?: string[]
+}
+
+type BackendEventPayload = {
+  _id?: string
+  title: string
+  description: string
+  categoryId: string
+  imageUrl: string
+  startDateTime: Date
+  endDateTime: Date
+  location: string
+  url: string
+  isFree: boolean
+  price: string
+  tags: string[]
 }
 
 type EventFormProps = {
   userId: string
   type: "Create" | "Update"
-  event?: IEvent
+  event?: IEventForm
   eventId?: string
 }
 
-const eventDefaultValues: IEvent = {
+const eventDefaultValues: IEventForm = {
   title: "",
   description: "",
   categoryId: "",
@@ -40,17 +54,34 @@ const eventDefaultValues: IEvent = {
   location: "",
   url: "",
   isFree: true,
-  price: 0,
-  tags: []
+  price: "",
+  tags: [],
+}
+
+function convertFormToBackend(e: IEventForm): BackendEventPayload {
+  return {
+    _id: e._id,
+    title: e.title,
+    description: e.description,
+    categoryId: e.categoryId,
+    imageUrl: e.imageUrl,
+    startDateTime: e.startDateTime ? new Date(e.startDateTime) : new Date(),
+    endDateTime: e.endDateTime ? new Date(e.endDateTime) : new Date(),
+    location: e.location ?? "",
+    url: e.url ?? "",
+    isFree: e.isFree,
+    price: e.price || "0",
+    tags: e.tags ?? [],
+  }
 }
 
 const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
-  const [formData, setFormData] = useState<IEvent>(event || eventDefaultValues)
+  const [formData, setFormData] = useState<IEventForm>(event || eventDefaultValues)
   const [files, setFiles] = useState<File[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [locationType, setLocationType] = useState<"physical" | "online">("physical")
   const [selectedLocation, setSelectedLocation] = useState<any>(null)
-  const [pendingEvent, setPendingEvent] = useState<IEvent | null>(null)
+  const [pendingEvent, setPendingEvent] = useState<IEventForm | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loadingPreview, setLoadingPreview] = useState(false)
 
@@ -65,11 +96,17 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
     fetchCategories()
   }, [])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, type } = e.target as HTMLInputElement
+    const value = type === "checkbox"
+      ? (e.target as HTMLInputElement).checked
+      : e.target.value
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value
+      [name]: value,
     }))
   }
 
@@ -94,40 +131,12 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
       const eventData = {
         ...formData,
         imageUrl: uploadedImageUrl,
-        location: locationType === "online" ? formData.url || "" : formData.location
+        location: locationType === "online" ? formData.url || "" : formData.location,
       }
 
-      setLoadingPreview(true)
-      console.log("Submitting event data:", eventData)
-
-      const response = await fetch("https://sench729-eventhub.hf.space/generate-event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: eventData.title,
-          description: eventData.description,
-        }),
-      })
-
-      if (!response.ok) throw new Error(`AI API failed: ${response.status}`)
-
-      const enriched = await response.json()
-      console.log("AI API enriched:", enriched)
-      const updatedresponse = enriched.proposals
-      console.log("AI API updatedone:", updatedresponse)
-
-
-      const updatedData = {
-        ...eventData,
-        title: updatedresponse[0].title || eventData.title,
-        description: (updatedresponse[0].description || eventData.description).replace(/\*/g, ""),
-        tags: updatedresponse[0].tags || [],
-      }
-
-      setPendingEvent(updatedData)
-      console.log(updatedData)
+      // ✅ Skip AI enrichment API for now
+      setPendingEvent(eventData)
       setShowConfirm(true)
-
     } catch (err) {
       console.error("Submit failed:", err)
       alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`)
@@ -139,14 +148,15 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
   const handleConfirm = async () => {
     if (!pendingEvent) return
     try {
+      const backendEvent = convertFormToBackend(pendingEvent)
+
       if (type === "Create") {
-        console.log("clerk user Id from Eventform: ",userId)
-        const newEvent = await createEvent({ event: pendingEvent, userId, path: "/profile" })
+        const newEvent = await createEvent({ event: backendEvent, userId, path: "/profile" })
         if (newEvent) router.push("/profile")
       } else if (type === "Update" && eventId) {
         const updated = await updateEvent({
           userId,
-          event: { ...pendingEvent, _id: eventId },
+          event: { ...backendEvent, _id: eventId },
           path: `/events/${eventId}`,
         })
         if (updated) router.push(`/events/${updated._id}`)
@@ -336,20 +346,12 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
           {showConfirm && pendingEvent && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
               <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-xl w-full space-y-6 relative z-[10000]">
-                {/* Title */}
-                <h2 className="text-2xl font-extrabold text-gray-900 leading-snug tracking-tight">
-                  {pendingEvent.title}
-                </h2>
+                <h2 className="text-2xl font-extrabold text-gray-900">{pendingEvent.title}</h2>
+                <p className="text-gray-700 text-lg">{pendingEvent.description}</p>
 
-                {/* Description */}
-                <p className="text-gray-700 text-lg leading-relaxed">
-                  {pendingEvent.description}
-                </p>
-
-                {/* Tags */}
-                {pendingEvent.tags?.length > 0 && (
+                {(pendingEvent.tags ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-3">
-                    {pendingEvent.tags.map((tag, i) => (
+                    {(pendingEvent.tags ?? []).map((tag, i) => (
                       <span
                         key={i}
                         className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm font-medium shadow-sm"
@@ -360,7 +362,6 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="flex justify-end gap-4 pt-4">
                   <button
                     onClick={() => setShowConfirm(false)}
@@ -372,7 +373,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                     onClick={handleConfirm}
                     className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-800 text-white font-semibold rounded-xl shadow-md hover:opacity-90 transition"
                   >
-                    Confirm & Create
+                    Confirm & {type}
                   </button>
                 </div>
               </div>
