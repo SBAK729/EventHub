@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getEventById } from "@/lib/actions/event.actions";
 
+// -----------------------------
+// GET handler
+// -----------------------------
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params; // ✅ must await here
     const event = await getEventById(id);
 
     if (!event) {
@@ -23,18 +26,16 @@ export async function GET(
 }
 
 // -----------------------------
-// New POST handler for moderation
+// POST handler for moderation
 // -----------------------------
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params; // ✅ await here too
     const body = await req.json();
 
-    // Here you’d call your moderation logic (AI, n8n webhook, etc.)
-    // For now, we just echo back what was sent.
     return NextResponse.json({
       message: `Moderation received for event ${id}`,
       data: body,
@@ -46,4 +47,3 @@ export async function POST(
     );
   }
 }
-
