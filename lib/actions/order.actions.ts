@@ -25,6 +25,14 @@ export interface GetOrdersByUserParams {
   page?: number;
 }
 
+export interface CreateOrderWebhookParams {
+  stripeId: string;
+  eventId: string;
+  buyerId: string;
+  totalAmount: string | number;
+  createdAt?: Date;
+}
+
 // ---------------------------
 // Checkout order
 // ---------------------------
@@ -135,6 +143,41 @@ export const getOrdersByUser = async ({
         }
       : undefined,
   }));
+};
+
+// ---------------------------
+// Create order (Stripe webhook)
+// ---------------------------
+export const createOrder = async ({
+  stripeId,
+  eventId,
+  buyerId,
+  totalAmount,
+  createdAt,
+}: CreateOrderWebhookParams) => {
+  await connectToDatabase();
+
+  const buyer = await User.findOne({ clerkId: buyerId });
+  if (!buyer) throw new Error("Buyer not found");
+
+  const eventObjectId = new ObjectId(eventId);
+
+  // Guard against duplicates (unique index also enforces this)
+  const existing = await Order.findOne({ stripeId });
+  if (existing) return existing;
+
+  const numericTotal = typeof totalAmount === 'string' ? Number(totalAmount) : totalAmount;
+
+  const order = await Order.create({
+    event: eventObjectId,
+    buyer: buyer._id,
+    totalAmount: isNaN(numericTotal) ? 0 : numericTotal,
+    isFree: false,
+    stripeId,
+    ...(createdAt ? { createdAt } : {}),
+  });
+
+  return order;
 };
 
 
