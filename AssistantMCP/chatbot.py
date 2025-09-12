@@ -1,14 +1,24 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from dual_retriever import DualRAGRetriever  # Updated import
+from dual_retriever import DualRAGRetriever
 from llm_provider import LLMManager
 from prompt import EventHubPrompts
 from memory import EventHubMemory
 from dotenv import load_dotenv
 import uvicorn
+import re
 
 load_dotenv()
+
+import re
+def filter_pii(text: str) -> str:
+    """Remove PII from text using regex patterns"""
+    text = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]', text)    
+    text = re.sub(r'(\+?1?[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})', '[PHONE]', text)    
+    text = re.sub(r'\b(?:\d{4}[-\s]?){3}\d{4}\b', '[CARD]', text)    
+    text = re.sub(r'\b\d{3}-?\d{2}-?\d{4}\b', '[SSN]', text)    
+    return text
 
 app = FastAPI(
     title="EventHub Chatbot API",
@@ -23,25 +33,24 @@ app.add_middleware(
         "https://sench729-eventhub.hf.space",
         "http://localhost:8080",
         "https://eventhu-5fow.vercel.app",
-        "https://event-hub-coral.vercel.app"
+        "https://event-hub-coral.vercel.app",
+        "https://event-hub0.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
-# Request/Response models
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
-    retrieval_mode: str = "combined"  # "combined", "local", "events", "none"
+    retrieval_mode: str = "combined"
 
 class ChatResponse(BaseModel):
     response: str
     session_id: str
     sources_used: list[str]
 
-# Global chatbot instances cache
 chatbots = {}
 
 def get_chatbot(session_id: str) -> "EventHubChatbot":
@@ -54,7 +63,7 @@ class EventHubChatbot:
     def __init__(self, session_id: str = "default"):
         """Initialize all chatbot components with dual RAG"""
         try:
-            self.retriever = DualRAGRetriever("https://sench729-eventhub.hf.space")  # Updated to dual retriever
+            self.retriever = DualRAGRetriever("https://sench729-eventhub.hf.space") 
             self.retriever_available = True
         except Exception as e:
             print(f"✗ Retriever error: {e}")
@@ -76,7 +85,6 @@ class EventHubChatbot:
             context = ""
             sources_used = []
         
-            # Get context based on retrieval mode
             if self.retriever_available and retrieval_mode != "none":
                 if retrieval_mode == "combined":
                     context = await self.retriever.get_formatted_context_async(user_input, n_results=2)
@@ -88,17 +96,12 @@ class EventHubChatbot:
                     context = await self.retriever.get_events_context_only_async(user_input)
                 sources_used = ["current_events"]
         
-            # Create messages with context and history
             messages = self.prompts.create_messages(
                 human_input=user_input,
                 context=context,
                 chat_history=self.memory.get_recent_messages(6)
             )
-        
-            # Get LLM response
             response = self.llm.get_response(messages)
-        
-            # Save to memory
             self.memory.add_user_message(user_input)
             self.memory.add_ai_message(response)
         
@@ -119,9 +122,10 @@ async def health_check():
 async def chat_endpoint(request: ChatRequest):
     """Main chat endpoint with flexible retrieval options"""
     try:
+        filtered_message = filter_pii(request.message)
         chatbot = get_chatbot(request.session_id)
         response, sources = await chatbot.get_response(
-            request.message, 
+            filtered_message, 
             request.retrieval_mode
         )
         
