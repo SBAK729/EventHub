@@ -62,12 +62,15 @@ const Card = async ({ event, hasOrderLink, hidePrice }: CardProps) => {
             {event.organizer.firstName} {event.organizer.lastName}
           </p>
 
-          {hasOrderLink && (
-            <Link href={`/orders?eventId=${event._id}`} className="flex gap-2">
-              <p className="text-primary-500">Order Details</p>
-              <Image src="/assets/icons/arrow.svg" alt="search" width={10} height={10} />
+          <div className="flex items-center gap-3">
+            <Link href={`/events/${event._id}`} className="text-primary-500 hidden md:inline-flex gap-2">
+              <span>Details</span>
+              <Image src="/assets/icons/arrow.svg" alt="details" width={10} height={10} />
             </Link>
-          )}
+            <Link href={`/events/${event._id}`} className="px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+              {event.isFree ? 'RSVP' : 'Get Tickets'}
+            </Link>
+          </div>
         </div>
       </div>
     </div>

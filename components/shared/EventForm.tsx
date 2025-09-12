@@ -84,6 +84,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
   const [pendingEvent, setPendingEvent] = useState<IEventForm | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loadingPreview, setLoadingPreview] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const router = useRouter()
   const { startUpload } = useUploadThing("imageUploader")
@@ -122,6 +123,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
     let uploadedImageUrl = formData.imageUrl
 
     try {
+      setIsSubmitting(true)
       if (files.length > 0) {
         const uploaded = await startUpload(files)
         if (!uploaded) throw new Error("Image upload failed")
@@ -142,12 +144,14 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
       alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`)
     } finally {
       setLoadingPreview(false)
+      setIsSubmitting(false)
     }
   }
 
   const handleConfirm = async () => {
     if (!pendingEvent) return
     try {
+      setIsSubmitting(true)
       const backendEvent = convertFormToBackend(pendingEvent)
 
       if (type === "Create") {
@@ -166,13 +170,14 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
     } finally {
       setShowConfirm(false)
       setPendingEvent(null)
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 dark:from-[#0b0b12] dark:to-[#0b0b12] p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-white dark:bg-[#11121a] rounded-xl shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-6">
             <h1 className="text-3xl font-bold text-center">{type} Event</h1>
             <p className="text-center text-purple-100 mt-2">
@@ -190,7 +195,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="w-full p-3 border rounded-lg"
+                  className="w-full p-3 border rounded-lg bg-white dark:bg-[#0f1018] dark:text-white"
                   required
                 />
               </label>
@@ -201,7 +206,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="w-full p-3 border rounded-lg min-h-[120px]"
+                  className="w-full p-3 border rounded-lg min-h-[120px] bg-white dark:bg-[#0f1018] dark:text-white"
                   required
                 />
               </label>
@@ -212,7 +217,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   name="categoryId"
                   value={formData.categoryId}
                   onChange={handleInputChange}
-                  className="w-full p-3 border rounded-lg"
+                  className="w-full p-3 border rounded-lg bg-white dark:bg-[#0f1018] dark:text-white"
                   required
                 >
                   <option value="">Select a category</option>
@@ -243,7 +248,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   name="startDateTime"
                   value={formData.startDateTime}
                   onChange={handleInputChange}
-                  className="w-full p-3 border rounded-lg"
+                  className="w-full p-3 border rounded-lg bg-white dark:bg-[#0f1018] dark:text-white"
                   required
                 />
               </label>
@@ -255,7 +260,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   name="endDateTime"
                   value={formData.endDateTime}
                   onChange={handleInputChange}
-                  className="w-full p-3 border rounded-lg"
+                  className="w-full p-3 border rounded-lg bg-white dark:bg-[#0f1018] dark:text-white"
                   required
                 />
               </label>
@@ -269,7 +274,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   type="button"
                   onClick={() => setLocationType("physical")}
                   className={`flex-1 p-4 rounded-lg border-2 ${
-                    locationType === "physical" ? "bg-purple-100 border-purple-500" : "bg-gray-50 border-gray-300"
+                    locationType === "physical" ? "bg-purple-100 dark:bg-purple-900/30 border-purple-500" : "bg-gray-50 dark:bg-[#0f1018] border-gray-300 dark:border-gray-700"
                   }`}
                 >
                   Physical Venue
@@ -278,7 +283,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                   type="button"
                   onClick={() => setLocationType("online")}
                   className={`flex-1 p-4 rounded-lg border-2 ${
-                    locationType === "online" ? "bg-purple-100 border-purple-500" : "bg-gray-50 border-gray-300"
+                    locationType === "online" ? "bg-purple-100 dark:bg-purple-900/30 border-purple-500" : "bg-gray-50 dark:bg-[#0f1018] border-gray-300 dark:border-gray-700"
                   }`}
                 >
                   Online Event
@@ -300,7 +305,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                     name="url"
                     value={formData.url}
                     onChange={handleInputChange}
-                    className="w-full p-3 border rounded-lg"
+                    className="w-full p-3 border rounded-lg bg-white dark:bg-[#0f1018] dark:text-white"
                     placeholder="https://zoom.us/j/123456789"
                     required
                   />
@@ -328,7 +333,7 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                     name="price"
                     value={formData.price}
                     onChange={handleInputChange}
-                    className="w-full p-3 border rounded-lg"
+                    className="w-full p-3 border rounded-lg bg-white dark:bg-[#0f1018] dark:text-white"
                     min={0}
                     step={0.01}
                     required
@@ -337,24 +342,24 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
               )}
             </div>
 
-            <button type="submit" disabled={loadingPreview} className="w-full p-3 bg-purple-600 text-white rounded-lg">
-              {loadingPreview ? "Preparing Preview..." : `${type} Event`}
+            <button type="submit" disabled={loadingPreview || isSubmitting} className="w-full p-3 bg-purple-600 text-white rounded-lg disabled:opacity-70">
+              {loadingPreview || isSubmitting ? (type === "Create" ? "Creating..." : "Updating...") : `${type} Event`}
             </button>
           </form>
 
           {/* Confirmation Dialog */}
           {showConfirm && pendingEvent && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-xl w-full space-y-6 relative z-[10000]">
-                <h2 className="text-2xl font-extrabold text-gray-900">{pendingEvent.title}</h2>
-                <p className="text-gray-700 text-lg">{pendingEvent.description}</p>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+              <div className="bg-white dark:bg-[#11121a] p-8 rounded-2xl shadow-2xl max-w-xl w-full space-y-6 relative z-[10000]">
+                <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">{pendingEvent.title}</h2>
+                <p className="text-gray-700 dark:text-gray-300 text-lg">{pendingEvent.description}</p>
 
                 {(pendingEvent.tags ?? []).length > 0 && (
                   <div className="flex flex-wrap gap-3">
                     {(pendingEvent.tags ?? []).map((tag, i) => (
                       <span
                         key={i}
-                        className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-full text-sm font-medium shadow-sm"
+                        className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 rounded-full text-sm font-medium shadow-sm"
                       >
                         {tag}
                       </span>
@@ -365,15 +370,16 @@ const EventForm = ({ userId, type, event, eventId }: EventFormProps) => {
                 <div className="flex justify-end gap-4 pt-4">
                   <button
                     onClick={() => setShowConfirm(false)}
-                    className="px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition"
+                    className="px-5 py-2.5 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-100 dark:hover:bg-[#0f1018] transition"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleConfirm}
-                    className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-800 text-white font-semibold rounded-xl shadow-md hover:opacity-90 transition"
+                    className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-purple-800 text-white font-semibold rounded-xl shadow-md hover:opacity-90 transition disabled:opacity-70"
+                    disabled={isSubmitting}
                   >
-                    Confirm & {type}
+                    {isSubmitting ? 'Submitting…' : `Confirm & ${type}`}
                   </button>
                 </div>
               </div>

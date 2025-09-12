@@ -1,183 +1,183 @@
-"use server"
+"use server";
 
-import Stripe from 'stripe';
-import { CheckoutOrderParams, CreateOrderParams, GetOrdersByEventParams, GetOrdersByUserParams } from "@/types"
-import { redirect } from 'next/navigation';
-import { handleError } from '../utils';
-import { connectToDatabase } from '../database';
-import Order from '../database/models/order.model';
-import Event from '../database/models/event.model';
-import { ObjectId } from 'mongodb';
-import User from '../database/models/user.model';
-import { IOrder } from "@/lib/database/models/order.model";
-// ❌ removed: import fetch from 'node-fetch'
+import Stripe from "stripe";
+import { ObjectId } from "mongodb";
+import { redirect } from "next/navigation";
+import Order from "@/lib/database/models/order.model";
+import Event from "@/lib/database/models/event.model";
+import User from "@/lib/database/models/user.model";
+import { connectToDatabase } from "@/lib/database";
 
+// ---------------------------
+// Types
+// ---------------------------
+export interface CheckoutOrderParams {
+  eventTitle: string;
+  eventId: string;
+  price: number;
+  isFree: boolean;
+  buyerId: string;
+}
+
+export interface GetOrdersByUserParams {
+  userId: string;
+  limit?: number;
+  page?: number;
+}
+
+export interface CreateOrderWebhookParams {
+  stripeId: string;
+  eventId: string;
+  buyerId: string;
+  totalAmount: string | number;
+  createdAt?: Date;
+}
+
+// ---------------------------
+// Checkout order
+// ---------------------------
 export const checkoutOrder = async (order: CheckoutOrderParams) => {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const numericPrice = order.isFree ? 0 : Number(order.price ?? 0);
+  const isFreeTicket = Boolean(order.isFree || numericPrice === 0);
 
-  const price = order.isFree ? 0 : Number(order.price) * 100;
+  if (!isFreeTicket && (isNaN(numericPrice) || numericPrice < 0)) {
+    throw new Error("Invalid price for paid event");
+  }
 
-  try {
+  await connectToDatabase();
+
+  const buyer = await User.findOne({ clerkId: order.buyerId });
+  if (!buyer) throw new Error("Buyer not found");
+
+  const eventObjectId = new ObjectId(order.eventId);
+
+  // If user already has a ticket for this event, short-circuit
+  const existing = await Order.findOne({ event: eventObjectId, buyer: buyer._id });
+  if (existing) {
+    return redirect(`${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/my-tickets`);
+  }
+
+  let sessionUrl: string | undefined;
+
+  if (!isFreeTicket) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error("Missing STRIPE_SECRET_KEY env var");
+    }
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
           price_data: {
-            currency: 'usd',
-            unit_amount: price,
-            product_data: {
-              name: order.eventTitle
-            }
+            currency: "usd",
+            unit_amount: numericPrice * 100,
+            product_data: { name: order.eventTitle },
           },
-          quantity: 1
+          quantity: 1,
         },
       ],
-      metadata: {
-        eventId: order.eventId,
-        buyerId: order.buyerId,
-      },
-      mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/profile`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SERVER_URL}/`,
+      mode: "payment",
+      metadata: { eventId: order.eventId, buyerId: order.buyerId },
+      success_url: `${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/profile`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/`,
     });
 
-    redirect(session.url!)
-  } catch (error) {
-    throw error;
+    sessionUrl = session.url!;
   }
-}
 
-export const createOrder = async (order: CreateOrderParams) => {
-  try {
-    await connectToDatabase();
-
-    // Map Clerk buyerId to internal User._id
-    const buyer = await User.findOne({ clerkId: order.buyerId });
-    if (!buyer) throw new Error('Buyer not found');
-
-    const eventObjectId = new ObjectId(order.eventId);
-
-    const newOrder = await Order.create({
-      ...order,
-      event: eventObjectId,
-      buyer: buyer._id,
-    });
-
-    // Fire RSVP email webhook
+  if (isFreeTicket) {
+    // Ensure indexes are in sync with the latest schema (drops old unique index on stripeId if needed)
     try {
-      const ev = await Event.findById(eventObjectId)
-      await fetch(process.env.EMAIL_AGENT_WEBHOOK_URL || 'https://karanja-kariuki.app.n8n.cloud/webhook/90d9afd1-e9e1-4f79-ae14-aa3cde1d1247', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'KK_ACCESS_PASS': process.env.KK_ACCESS_PASS || ''  // ✅ use env, not hardcoded
-        },
-        body: JSON.stringify({
-          name: `${buyer.firstName} ${buyer.lastName}`.trim(),
-          email: buyer.email,
-          event_title: ev?.title || '',
-          event_date: ev?.startDateTime ? new Date(ev.startDateTime).toLocaleDateString() : '',
-          event_time: ev?.startDateTime ? new Date(ev.startDateTime).toLocaleTimeString() : '',
-          event_place: ev?.location || '',
-          reminder_type: 'rsvp'
-        })
-      }).catch(()=>{})
+      await Order.syncIndexes();
     } catch {}
 
-    return JSON.parse(JSON.stringify(newOrder));
-  } catch (error) {
-    handleError(error);
+    // Create the free order immediately
+    await Order.create({
+      event: eventObjectId,
+      buyer: buyer._id,
+      totalAmount: 0,
+      isFree: true,
+    });
+    return redirect(`${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/my-tickets`);
   }
-}
 
-// GET ORDERS BY EVENT
-export async function getOrdersByEvent({ searchString, eventId }: GetOrdersByEventParams) {
-  try {
-    await connectToDatabase()
+  // Paid flow: redirect to Stripe; order will be created by webhook upon payment success
+  redirect(sessionUrl!);
+};
 
-    if (!eventId) throw new Error('Event ID is required')
-    const eventObjectId = new ObjectId(eventId)
-
-    const orders = await Order.aggregate([
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'buyer',
-          foreignField: '_id',
-          as: 'buyer',
-        },
-      },
-      { $unwind: '$buyer' },
-      {
-        $lookup: {
-          from: 'events',
-          localField: 'event',
-          foreignField: '_id',
-          as: 'event',
-        },
-      },
-      { $unwind: '$event' },
-      {
-        $project: {
-          _id: 1,
-          totalAmount: 1,
-          createdAt: 1,
-          eventTitle: '$event.title',
-          eventId: '$event._id',
-          buyer: {
-            $concat: ['$buyer.firstName', ' ', '$buyer.lastName'],
-          },
-        },
-      },
-      {
-        $match: {
-          $and: [
-            { eventId: eventObjectId },
-            { buyer: { $regex: RegExp(searchString, 'i') } }
-          ],
-        },
-      },
-    ])
-
-    return JSON.parse(JSON.stringify(orders))
-  } catch (error) {
-    handleError(error)
-  }
-}
-
-// GET ORDERS BY USER
-export async function getOrdersByUser({
+// ---------------------------
+// Get orders by user
+// ---------------------------
+export const getOrdersByUser = async ({
   userId,
-  limit = 3,
-  page,
-}: GetOrdersByUserParams): Promise<{ data: IOrder[] }> {
-  try {
-    await connectToDatabase();
+  limit = 10,
+  page = 1,
+}: GetOrdersByUserParams) => {
+  await connectToDatabase();
 
-    const skipAmount = (Number(page) - 1) * limit;
+  const skipAmount = (page - 1) * limit;
+  const buyer = await User.findOne({ clerkId: userId });
+  if (!buyer) throw new Error("User not found");
 
-    // Map Clerk userId to internal User._id
-    const buyer = await User.findOne({ clerkId: userId });
-    if (!buyer) throw new Error("User not found");
+  const orders = await Order.find({ buyer: buyer._id })
+    .sort({ createdAt: "desc" })
+    .skip(skipAmount)
+    .limit(limit)
+    .populate({
+      path: "event",
+      model: Event,
+      select: "_id title price isFree startDateTime",
+    });
 
-    const conditions = { buyer: buyer._id };
+  return orders.map((order) => ({
+    _id: order._id.toString(),
+    totalAmount: order.totalAmount,
+    createdAt: order.createdAt,
+    isFree: order.isFree,
+    event: order.event
+      ? {
+          _id: (order.event as any)._id.toString(),
+          title: (order.event as any).title,
+          price: (order.event as any).price,
+          isFree: (order.event as any).isFree,
+          startDateTime: (order.event as any).startDateTime,
+        }
+      : undefined,
+  }));
+};
 
-    const orders = await Order.find(conditions)
-      .sort({ createdAt: "desc" })
-      .skip(skipAmount)
-      .limit(limit)
-      .populate({
-        path: "event",
-        model: Event,
-        populate: {
-          path: "organizer",
-          model: User,
-          select: "_id firstName lastName",
-        },
-      });
+// ---------------------------
+// Create order (Stripe webhook)
+// ---------------------------
+export const createOrder = async ({
+  stripeId,
+  eventId,
+  buyerId,
+  totalAmount,
+  createdAt,
+}: CreateOrderWebhookParams) => {
+  await connectToDatabase();
 
-    return { data: JSON.parse(JSON.stringify(orders)) as IOrder[] };
-  } catch (error) {
-    handleError(error);
-    return { data: [] }; // ensure return type is consistent
-  }
-}
+  const buyer = await User.findOne({ clerkId: buyerId });
+  if (!buyer) throw new Error("Buyer not found");
+
+  const eventObjectId = new ObjectId(eventId);
+
+  // Guard against duplicates (unique index also enforces this)
+  const existing = await Order.findOne({ stripeId });
+  if (existing) return existing;
+
+  const numericTotal = typeof totalAmount === 'string' ? Number(totalAmount) : totalAmount;
+
+  const order = await Order.create({
+    event: eventObjectId,
+    buyer: buyer._id,
+    totalAmount: isNaN(numericTotal) ? 0 : numericTotal,
+    isFree: false,
+    stripeId,
+    ...(createdAt ? { createdAt } : {}),
+  });
+
+  return order;
+};
+
+
