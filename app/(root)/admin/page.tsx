@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { headers } from "next/headers";
 import { BadgeCheck } from "lucide-react";
+import AIRiskAssessment from "@/components/shared/AIRiskAssessment";
 
 const AdminPage = async () => {
   const { sessionClaims } = await auth();
@@ -92,22 +93,40 @@ const AdminPage = async () => {
               {pending && pending.length > 0 ? (
                 <div className="space-y-4">
                   {pending.map((p: any) => (
-                    <div key={p._id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img src={p.imageUrl} alt={p.title} className="w-12 h-12 rounded object-cover" />
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{p.title}</p>
-                          <p className="text-sm text-muted-foreground truncate">By {p.organizer?.firstName} {p.organizer?.lastName}</p>
+                    <div key={p._id} className="space-y-4">
+                      {/* Event Basic Info */}
+                      <div className="flex items-center justify-between p-3 border rounded-lg bg-white dark:bg-[#11121a]">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img src={p.imageUrl} alt={p.title} className="w-12 h-12 rounded object-cover" />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{p.title}</p>
+                            <p className="text-sm text-muted-foreground truncate">By {p.organizer?.firstName} {p.organizer?.lastName}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <form action={async () => { 'use server'; await updateEventStatus({ eventId: p._id, status: 'approved' }) }}> 
+                            <Button type="submit" size="sm" className="bg-green-600 hover:bg-green-700">Approve</Button>
+                          </form>
+                          <form action={async () => { 'use server'; await updateEventStatus({ eventId: p._id, status: 'rejected' }) }}>
+                            <Button type="submit" size="sm" variant="destructive">Reject</Button>
+                          </form>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <form action={async () => { 'use server'; await updateEventStatus({ eventId: p._id, status: 'approved' }) }}> 
-                          <Button type="submit" size="sm" className="bg-green-600 hover:bg-green-700">Approve</Button>
-                        </form>
-                        <form action={async () => { 'use server'; await updateEventStatus({ eventId: p._id, status: 'rejected' }) }}>
-                          <Button type="submit" size="sm" variant="destructive">Reject</Button>
-                        </form>
-                      </div>
+                      
+                      {/* AI Risk Assessment */}
+                      <AIRiskAssessment
+                        eventId={p._id}
+                        eventTitle={p.title}
+                        moderation={p.moderation}
+                        onApprove={async () => { 
+                          'use server'; 
+                          await updateEventStatus({ eventId: p._id, status: 'approved' }) 
+                        }}
+                        onReject={async () => { 
+                          'use server'; 
+                          await updateEventStatus({ eventId: p._id, status: 'rejected' }) 
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
