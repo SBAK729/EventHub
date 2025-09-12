@@ -24,7 +24,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider appearance={{
+      elements: {
+        card: 'bg-white dark:bg-[#11121a] shadow-xl border border-purple-200 dark:border-purple-700 rounded-xl',
+        formFieldInput: 'bg-white dark:bg-[#0f1018] dark:text-white',
+        formButtonPrimary: 'bg-purple-600 hover:bg-purple-700 text-white',
+        headerTitle: 'text-gray-900 dark:text-white',
+        headerSubtitle: 'text-gray-600 dark:text-gray-300'
+      }
+    }}>
       <html lang="en" suppressHydrationWarning>
         <body className={`${poppins.variable} bg-white text-foreground dark:bg-[#0b0b12]`}>{children}</body>
       </html>
