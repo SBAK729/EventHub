@@ -34,7 +34,7 @@ export async function createEvent({ userId, event, path }: CreateEventParams) {
   try {
     console.log('createEvent called with userId:', userId)
     console.log('createEvent called with event data:', event)
-    
+
     await connectToDatabase()
     console.log('Database connected')
 
@@ -43,27 +43,28 @@ export async function createEvent({ userId, event, path }: CreateEventParams) {
     console.log('Organizer found:', organizer)
     if (!organizer) throw new Error('Organizer not found')
 
-    const newEvent = await Event.create({ 
-      ...event, 
-      category: event.categoryId, 
-      organizer: organizer._id, 
-      status: 'pending' 
+    const newEvent = await Event.create({
+      ...event,
+      category: event.categoryId,
+      organizer: organizer._id,
+      status: 'pending'
     })
 
     // Fire-and-forget moderation webhook
     try {
       await fetch(process.env.MODERATION_WEBHOOK_URL || 'https://karanja-kariuki.app.n8n.cloud/webhook/92c9b343-6599-4253-afb4-711946738a55', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'KK_ACCESS_PASS': 'CFtM.......' },
+        headers: { 'Content-Type': 'application/json', 'KK_ACCESS_PASS': 'CFtMJFnPwxAT8EMI5aPOfS7fA4E9qA3dX' },
         body: JSON.stringify({
           event_id: newEvent._id.toString(),
           title: newEvent.title,
-          description: newEvent.description || ''
+          description: newEvent.description || '',
+          callback_url: process.env.APP_BASE_URL + '/api/events/moderation'
         })
-      }).catch(() => {})
-    } catch {}
+      }).catch(() => { })
+    } catch { }
     console.log('Event created in database:', newEvent)
-    
+
     // Revalidate key pages
     if (path) revalidatePath(path)
     revalidatePath('/profile')
@@ -114,14 +115,15 @@ export async function updateEvent({ userId, event, path }: UpdateEventParams) {
       try {
         await fetch(process.env.MODERATION_WEBHOOK_URL || 'https://karanja-kariuki.app.n8n.cloud/webhook/92c9b343-6599-4253-afb4-711946738a55', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'KK_ACCESS_PASS': 'CFtM.......' },
+          headers: { 'Content-Type': 'application/json', 'KK_ACCESS_PASS': 'CFtMJFnPwxAT8EMI5aPOfS7fA4E9qA3dX' },
           body: JSON.stringify({
             event_id: updatedEvent._id.toString(),
             title: updatedEvent.title,
-            description: updatedEvent.description || ''
+            description: updatedEvent.description || '',
+            callback_url: process.env.APP_BASE_URL + '/api/events/moderation'
           })
-        }).catch(() => {})
-      } catch {}
+        }).catch(() => { })
+      } catch { }
     }
     if (path) revalidatePath(path)
     revalidatePath('/profile')
