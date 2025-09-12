@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectToDatabase } from '@/lib/database'
 import Event from '@/lib/database/models/event.model'
 
+
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -15,10 +17,34 @@ export async function POST(req: NextRequest) {
         flags,
       },
     })
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }
+    })
   } catch (e) {
-    return NextResponse.json({ error: 'failed' }, { status: 500 })
+    return NextResponse.json({ error: 'failed' }, { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }
+    })
   }
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+  })
 }
 
 
