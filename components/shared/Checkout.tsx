@@ -17,16 +17,36 @@ const Checkout: React.FC<CheckoutProps> = ({ event, userId }) => {
     try {
       if (isLoading) return;
       setIsLoading(true);
-      await checkoutOrder({
+      
+      console.log("Starting checkout for event:", {
+        eventId: event._id,
+        title: event.title,
+        price: event.price,
+        isFree: event.isFree,
+        userId: userId
+      });
+      
+      const result = await checkoutOrder({
         eventTitle: event.title,
         eventId: event._id,
         price: Number(event.price ?? 0),
         isFree: event.isFree ?? false,
         buyerId: userId,
       });
+      
+      if (result && result.success) {
+        if (result.alreadyExists) {
+          alert(result.message);
+        } else {
+          alert(result.message);
+          // Redirect to my-tickets page
+          window.location.href = '/my-tickets';
+        }
+      }
     } catch (err) {
       console.error("Checkout failed:", err);
-      alert("Failed to complete checkout. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
+      alert(`Checkout failed: ${errorMessage}. Please try again.`);
     } finally {
       setIsLoading(false);
     }

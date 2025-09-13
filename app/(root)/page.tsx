@@ -50,9 +50,21 @@ export default function Home() {
   useEffect(() => {
     const loadApproved = async () => {
       try {
+        console.log('Fetching events from API...')
         const res = await fetch('/api/events?limit=8&page=1', { cache: 'no-store' })
+        console.log('API response status:', res.status)
+        console.log('API response headers:', res.headers)
+        
+        if (!res.ok) {
+          throw new Error(`API request failed with status: ${res.status}`)
+        }
+        
         const json = await res.json()
+        console.log('API response data:', json)
+        
         const data: any[] = json?.data || []
+        console.log('Events data:', data)
+        
         const mapped = data.map((e: any) => ({
           _id: e._id,
           title: e.title,
@@ -66,9 +78,11 @@ export default function Home() {
           imageUrl: e.imageUrl,
           tags: e.tags || '',
         })) as Event[]
+        
+        console.log('Mapped events:', mapped)
         setApproved(mapped)
       } catch (e) {
-        console.error(e)
+        console.error('Error loading events:', e)
       }
     }
     loadApproved()
@@ -295,6 +309,9 @@ function StepCard({ icon, title, description }: { icon: string; title: string; d
 }
 
 function RecommendedSection({ approved }: { approved: Event[] }) {
+  console.log('RecommendedSection rendered with approved events:', approved)
+  console.log('Number of approved events:', approved.length)
+  
   return (
     <section className="bg-purple-700 py-12 md:py-16">
   <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -318,20 +335,23 @@ function RecommendedSection({ approved }: { approved: Event[] }) {
       </div>
     </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {approved.length > 0 ? approved.map(ev => (
-            <EventCard
-              key={ev._id}
-              id={ev._id}
-              image={ev.imageUrl}
-              category={ev.category}
-              title={ev.title}
-              date={new Date(ev.startDateTime).toLocaleString()}
-              location={ev.location}
-              attendees=""
-              price={ev.isFree ? 'Free' : ev.price}
-              organizer={ev.organizer}
-            />
-          )) : <p className="text-white">No recommended events yet.</p>}
+          {approved.length > 0 ? approved.map(ev => {
+            console.log('Rendering event card for:', ev.title)
+            return (
+              <EventCard
+                key={ev._id}
+                id={ev._id}
+                image={ev.imageUrl}
+                category={ev.category}
+                title={ev.title}
+                date={new Date(ev.startDateTime).toLocaleString()}
+                location={ev.location}
+                attendees=""
+                price={ev.isFree ? 'Free' : ev.price}
+                organizer={ev.organizer}
+              />
+            )
+          }) : <p className="text-white">No recommended events yet.</p>}
         </div>
       </div>
     </section>

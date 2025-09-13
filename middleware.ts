@@ -1,23 +1,34 @@
 // middleware.ts
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Apply Clerk middleware to all matched routes
-export default clerkMiddleware();
+// Define public routes that don't require authentication
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/events/(.*)',
+  '/api/webhook/clerk',
+  '/api/webhook/stripe',
+  '/api/uploadthing',
+  '/api/allevents',
+  '/api/events/(.*)',
+  '/api/events/related',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/sso-callback(.*)',
+]);
+
+// Apply Clerk middleware with public route configuration
+export default clerkMiddleware((auth, req) => {
+  if (!isPublicRoute(req)) {
+    auth.protect();
+  }
+});
 
 // Define which routes the middleware should run on
 export const config = {
   matcher: [
-    // Protect everything except these public routes
-    // Root page
-    "/",
-    // Event pages
-    "/events/:id",
-    // API webhooks (Clerk & Stripe) and UploadThing
-    "/api/webhook/clerk",
-    "/api/webhook/stripe",
-    "/api/uploadthing",
-    // Protect all other routes except Next.js internals
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-    "/(api|trpc)(.*)",
+    // Skip Next.js internals and all static files
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
   ],
 };

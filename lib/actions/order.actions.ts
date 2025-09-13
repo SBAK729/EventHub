@@ -37,32 +37,74 @@ export interface CreateOrderWebhookParams {
 // Checkout order
 // ---------------------------
 export const checkoutOrder = async (order: CheckoutOrderParams) => {
+  console.log("CheckoutOrder called with:", order);
+  
   const numericPrice = order.isFree ? 0 : Number(order.price ?? 0);
   const isFreeTicket = Boolean(order.isFree || numericPrice === 0);
+
+  console.log("Price analysis:", { numericPrice, isFreeTicket, originalPrice: order.price });
 
   if (!isFreeTicket && (isNaN(numericPrice) || numericPrice < 0)) {
     throw new Error("Invalid price for paid event");
   }
 
-  await connectToDatabase();
+  try {
+    await connectToDatabase();
+    console.log("Database connected");
 
-  const buyer = await User.findOne({ clerkId: order.buyerId });
-  if (!buyer) throw new Error("Buyer not found");
+    const buyer = await User.findOne({ clerkId: order.buyerId });
+    if (!buyer) {
+      console.error("Buyer not found for clerkId:", order.buyerId);
+      throw new Error("Buyer not found");
+    }
+    console.log("Buyer found:", buyer._id);
 
-  const eventObjectId = new ObjectId(order.eventId);
+    const eventObjectId = new ObjectId(order.eventId);
+    console.log("Event ObjectId:", eventObjectId);
 
-  // If user already has a ticket for this event, short-circuit
-  const existing = await Order.findOne({ event: eventObjectId, buyer: buyer._id });
-  if (existing) {
-    return redirect(`${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/my-tickets`);
-  }
+    // If user already has a ticket for this event, short-circuit
+    const existing = await Order.findOne({ event: eventObjectId, buyer: buyer._id });
+    if (existing) {
+      console.log("Existing order found, returning status");
+      return { success: true, alreadyExists: true, message: "You already have a ticket for this event" };
+    }
 
-  let sessionUrl: string | undefined;
+    // Handle free tickets
+    if (isFreeTicket) {
+      console.log("Processing free ticket...");
+      
+      // Ensure indexes are in sync with the latest schema (drops old unique index on stripeId if needed)
+      try {
+        await Order.syncIndexes();
+        console.log("Indexes synced successfully");
+      } catch (error) {
+        console.log("Index sync warning:", error);
+      }
 
-  if (!isFreeTicket) {
+      // Create the free order immediately
+      console.log("Creating free order with data:", {
+        event: eventObjectId,
+        buyer: buyer._id,
+        totalAmount: 0,
+        isFree: true
+      });
+      
+      const freeOrder = await Order.create({
+        event: eventObjectId,
+        buyer: buyer._id,
+        totalAmount: 0,
+        isFree: true,
+      });
+      
+      console.log("Free order created successfully:", freeOrder._id);
+      return { success: true, alreadyExists: false, message: "Free ticket claimed successfully" };
+    }
+
+    // Handle paid tickets
     if (!process.env.STRIPE_SECRET_KEY) {
       throw new Error("Missing STRIPE_SECRET_KEY env var");
     }
+    
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
       line_items: [
@@ -81,27 +123,13 @@ export const checkoutOrder = async (order: CheckoutOrderParams) => {
       cancel_url: `${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/`,
     });
 
-    sessionUrl = session.url!;
+    // Paid flow: redirect to Stripe; order will be created by webhook upon payment success
+    redirect(session.url!);
+    
+  } catch (error) {
+    console.error("Error in checkoutOrder:", error);
+    throw error;
   }
-
-  if (isFreeTicket) {
-    // Ensure indexes are in sync with the latest schema (drops old unique index on stripeId if needed)
-    try {
-      await Order.syncIndexes();
-    } catch {}
-
-    // Create the free order immediately
-    await Order.create({
-      event: eventObjectId,
-      buyer: buyer._id,
-      totalAmount: 0,
-      isFree: true,
-    });
-    return redirect(`${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}/my-tickets`);
-  }
-
-  // Paid flow: redirect to Stripe; order will be created by webhook upon payment success
-  redirect(sessionUrl!);
 };
 
 // ---------------------------
