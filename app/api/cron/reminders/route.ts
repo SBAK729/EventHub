@@ -1,55 +1,102 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectToDatabase } from '@/lib/database'
-import Event from '@/lib/database/models/event.model'
 import Order from '@/lib/database/models/order.model'
+import Event from '@/lib/database/models/event.model'
 import User from '@/lib/database/models/user.model'
-// no need: import fetch from 'node-fetch'
+import { NotificationService } from '@/lib/services/notification.service'
 
 export async function GET(req: NextRequest) {
   try {
+    // Verify this is a legitimate cron request (you might want to add authentication)
+    const authHeader = req.headers.get('authorization')
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     await connectToDatabase()
-    const now = new Date()
-    const tomorrow = new Date(now)
-    tomorrow.setDate(now.getDate() + 1)
+    console.log('Starting daily reminder check...')
 
-    const start = new Date(tomorrow)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(tomorrow)
-    end.setHours(23, 59, 59, 999)
+    // Get all orders for events happening tomorrow
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+    
+    const dayAfter = new Date(tomorrow)
+    dayAfter.setDate(dayAfter.getDate() + 1)
 
-    // Find events happening tomorrow (approved only)
-    const events = await Event.find({ startDateTime: { $gte: start, $lte: end }, status: 'approved' })
+    // Find all events happening tomorrow
+    const eventsTomorrow = await Event.find({
+      startDateTime: {
+        $gte: tomorrow,
+        $lt: dayAfter
+      },
+      status: 'approved'
+    })
 
-    for (const ev of events) {
-      const orders = await Order.find({ event: ev._id }).populate('buyer')
-      for (const ord of orders) {
-        const buyer: any = ord.buyer
-        if (!buyer?.email) continue
-        await fetch(
-          process.env.EMAIL_AGENT_WEBHOOK_URL ||
-          'https://karanja-kariuki.app.n8n.cloud/webhook/90d9afd1-e9e1-4f79-ae14-aa3cde1d1247',
-          {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'KK_ACCESS_PASS': process.env.KK_ACCESS_PASS || ''  // ✅ use env variable
-            },
-            body: JSON.stringify({
-              name: `${buyer.firstName} ${buyer.lastName}`.trim(),
-              email: buyer.email,
-              event_title: ev.title,
-              event_date: ev.startDateTime ? new Date(ev.startDateTime).toLocaleDateString() : '',
-              event_time: ev.startDateTime ? new Date(ev.startDateTime).toLocaleTimeString() : '',
-              event_place: ev.location || '',
-              reminder_type: 'reminder'
-            })
+    console.log(`Found ${eventsTomorrow.length} events happening tomorrow`)
+
+    let remindersSent = 0
+    let errors = 0
+
+    // For each event, find all orders and send reminders
+    for (const event of eventsTomorrow) {
+      try {
+        const orders = await Order.find({ event: event._id })
+          .populate('buyer', 'firstName lastName email')
+
+        console.log(`Found ${orders.length} orders for event: ${event.title}`)
+
+        for (const order of orders) {
+          try {
+            if (order.buyer && typeof order.buyer === 'object' && 'firstName' in order.buyer) {
+              const buyer = order.buyer as any
+              
+              await NotificationService.sendReminderNotification(
+                {
+                  firstName: buyer.firstName,
+                  lastName: buyer.lastName,
+                  email: buyer.email
+                },
+                {
+                  title: event.title,
+                  startDateTime: event.startDateTime,
+                  location: event.location
+                }
+              )
+              
+              remindersSent++
+              console.log(`Reminder sent to ${buyer.email} for event: ${event.title}`)
+            }
+          } catch (error) {
+            console.error(`Failed to send reminder for order ${order._id}:`, error)
+            errors++
           }
-        ).catch(() => {})
+        }
+      } catch (error) {
+        console.error(`Failed to process event ${event._id}:`, error)
+        errors++
       }
     }
 
-    return NextResponse.json({ ok: true, events: events.length })
-  } catch (e) {
-    return NextResponse.json({ error: 'failed' }, { status: 500 })
+    console.log(`Reminder check completed. Sent: ${remindersSent}, Errors: ${errors}`)
+
+    return NextResponse.json({
+      success: true,
+      eventsProcessed: eventsTomorrow.length,
+      remindersSent,
+      errors
+    })
+
+  } catch (error) {
+    console.error('Cron job error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
+}
+
+// Allow POST as well for manual triggering
+export async function POST(req: NextRequest) {
+  return GET(req)
 }
