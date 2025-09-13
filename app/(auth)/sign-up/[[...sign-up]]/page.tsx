@@ -1,8 +1,8 @@
 "use client"
 
-import { useSignUp } from "@clerk/nextjs"
+import { useSignUp, useAuth } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,18 +11,38 @@ import { Chrome } from "lucide-react"
 
 export default function SignUpPage() {
   const { signUp, isLoaded } = useSignUp()
+  const { isSignedIn } = useAuth()
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
 
+  // Redirect if already signed in
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/")
+    }
+  }, [isLoaded, isSignedIn, router])
+
   if (!isLoaded) return null
+
+  // Show loading if user is already signed in (while redirecting)
+  if (isSignedIn) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       const result = await signUp.create({ emailAddress: email, password })
       if (result.status === "complete") {
-        router.push("/")
+        router.replace("/")
       }
     } catch (err) {
       console.error("Sign-up error:", err)
