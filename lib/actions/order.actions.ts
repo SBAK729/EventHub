@@ -7,6 +7,7 @@ import Order from "@/lib/database/models/order.model";
 import Event from "@/lib/database/models/event.model";
 import User from "@/lib/database/models/user.model";
 import { connectToDatabase } from "@/lib/database";
+import { NotificationService } from "@/lib/services/notification.service";
 
 // ---------------------------
 // Types
@@ -97,6 +98,29 @@ export const checkoutOrder = async (order: CheckoutOrderParams) => {
       });
       
       console.log("Free order created successfully:", freeOrder._id);
+      
+      // Send RSVP notification
+      try {
+        const event = await Event.findById(eventObjectId);
+        if (event) {
+          await NotificationService.sendRSVPNotification(
+            {
+              firstName: buyer.firstName,
+              lastName: buyer.lastName,
+              email: buyer.email
+            },
+            {
+              title: event.title,
+              startDateTime: event.startDateTime,
+              location: event.location
+            }
+          );
+        }
+      } catch (notificationError) {
+        console.error("Failed to send RSVP notification:", notificationError);
+        // Don't fail the checkout if notification fails
+      }
+      
       return { success: true, alreadyExists: false, message: "Free ticket claimed successfully" };
     }
 
