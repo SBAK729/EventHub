@@ -4,6 +4,7 @@ import { currentUser } from '@clerk/nextjs/server';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
+import CardButton from './CardButton';
 // import { DeleteConfirmation } from './DeleteConfirmation'
 
 type CardProps = {
@@ -67,9 +68,7 @@ const Card = async ({ event, hasOrderLink, hidePrice }: CardProps) => {
               <span>Details</span>
               <Image src="/assets/icons/arrow.svg" alt="details" width={10} height={10} />
             </Link>
-            <Link href={`/events/${event._id}`} className="px-3 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-700">
-              {event.isFree ? 'RSVP' : 'Get Tickets'}
-            </Link>
+            <CardButton event={event} />
           </div>
         </div>
       </div>

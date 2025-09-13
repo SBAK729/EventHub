@@ -90,7 +90,7 @@ export default function AIRiskAssessment({
               </p>
               {moderation?.risk_score && (
                 <p className="text-sm text-muted-foreground">
-                  Score: {(moderation.risk_score * 100).toFixed(1)}%
+                  Score: {moderation.risk_score.toFixed(1)}%
                 </p>
               )}
             </div>
@@ -101,7 +101,7 @@ export default function AIRiskAssessment({
                    riskInfo.color === 'green' ? 'default' : 'outline'}
             className="text-xs"
           >
-            {moderation?.risk_score ? `${(moderation.risk_score * 100).toFixed(0)}%` : 'N/A'}
+            {moderation?.risk_score ? `${moderation.risk_score.toFixed(0)}%` : 'N/A'}
           </Badge>
         </div>
 
