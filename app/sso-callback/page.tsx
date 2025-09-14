@@ -8,24 +8,43 @@ export default function SSOCallbackPage() {
   const { isSignedIn, isLoaded } = useAuth()
   const router = useRouter()
   const [hasRedirected, setHasRedirected] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isLoaded && !hasRedirected) {
+    let timeout: NodeJS.Timeout
+
+    if (isLoaded && isSignedIn && !hasRedirected) {
       setHasRedirected(true)
-      
-      if (isSignedIn) {
-        // User successfully signed in, redirect to home
-        console.log("SSO callback: User signed in, redirecting to home")
-        router.replace("/")
-      } else {
-        // Sign-in failed, redirect to sign-in page
-        console.log("SSO callback: Sign-in failed, redirecting to sign-in page")
-        router.replace("/sign-in")
-      }
+      console.log("SSO callback: User signed in, redirecting to home")
+      router.replace("/")
+    } else if (isLoaded && !isSignedIn) {
+      // Set a timeout — if Clerk hasn’t signed them in after 5s, show error
+      timeout = setTimeout(() => {
+        setError("We couldn’t complete the sign-in. Please try again.")
+      }, 5000)
+    }
+
+    return () => {
+      if (timeout) clearTimeout(timeout)
     }
   }, [isLoaded, isSignedIn, router, hasRedirected])
 
-  // Show loading state while processing
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <p className="text-red-600 font-semibold">{error}</p>
+          <button
+            onClick={() => router.replace("/sign-in")}
+            className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
